@@ -42,6 +42,7 @@ type FishingStageProps = {
 type ActionControlsProps = {
   activeCast: ActiveCast | null;
   actionPending: boolean;
+  castCooldownActive: boolean;
   tapCount: number;
   now: number;
   onStartCast: () => void;
@@ -135,7 +136,7 @@ const assetPreloadImages = [
 
 const bobberSize = 30;
 const bobberRadius = bobberSize / 2;
-const bobberVisibleAboveWater = Math.round(bobberRadius * 0.75);
+const bobberVisibleAboveWater = Math.round(bobberSize * 0.72);
 const rigLineHeight = 36;
 const hookSize = 18;
 const rigWidth = 44;
@@ -145,6 +146,7 @@ const idleFloatVisual = { offset: 0, xOffset: 0, tilt: 0, submerge: 0 };
 const castAnimationMinMs = 680;
 const castAnimationMaxMs = 980;
 const castAnimationDefaultMs = 820;
+const catchCooldownMs = 3000;
 const rodImageSize = { width: 1536, height: 1024 };
 const rodTipAnchor = { x: 0.07878, y: 0.04785 };
 const rodBaseAnchor = { x: 0.383, y: 0.998 };
@@ -223,6 +225,25 @@ const useStageSize = (stageRef: RefObject<HTMLDivElement | null>): StageSize => 
   }, [stageRef]);
 
   return size;
+};
+
+const useCooldownActive = (availableAt: number): boolean => {
+  const [cooldownNow, setCooldownNow] = useState(() => Date.now());
+  const active = availableAt > cooldownNow;
+
+  useEffect(() => {
+    if (availableAt <= cooldownNow) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCooldownNow(Date.now());
+    }, Math.max(0, availableAt - Date.now() + 20));
+
+    return () => window.clearTimeout(timeoutId);
+  }, [availableAt, cooldownNow]);
+
+  return active;
 };
 
 const useRiverKingRigMotion = (
@@ -398,9 +419,9 @@ const useRiverKingRigMotion = (
 
       if (state === 'biting') {
         const extraWave = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.75));
-        offset = 10 + mainWave * 6.5 + extraWave * 1.8;
+        offset = 3.5 + mainWave * 4.2 + extraWave * 1;
         tilt = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.9)) * 6.5;
-        submerge = offset > 0 ? Math.min(1, offset / 11) : 0;
+        submerge = offset > 0 ? Math.min(1, offset / 8) : 0;
       } else {
         const quickWave = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.85));
         const pullWave = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 1.45));
@@ -791,6 +812,8 @@ const FishingStage = ({
   const stageRef = useRef<HTMLDivElement>(null);
   const stageSize = useStageSize(stageRef);
   const rigMotion = useRiverKingRigMotion(stageSize, activeCast, now);
+  const nextCastAvailableAt = lastCatch ? lastCatch.caughtAt + catchCooldownMs : 0;
+  const castCooldownActive = useCooldownActive(nextCastAvailableAt);
 
   const rodGeometry = useMemo(
     () =>
@@ -918,6 +941,7 @@ const FishingStage = ({
         <ActionControls
           activeCast={activeCast}
           actionPending={actionPending}
+          castCooldownActive={castCooldownActive}
           tapCount={tapCount}
           now={now}
           onStartCast={onStartCast}
@@ -952,6 +976,7 @@ const CatchFlight = ({
 const ActionControls = ({
   activeCast,
   actionPending,
+  castCooldownActive,
   tapCount,
   now,
   onStartCast,
@@ -960,7 +985,12 @@ const ActionControls = ({
 }: ActionControlsProps) => {
   if (!activeCast) {
     return (
-      <button className="cast-action" disabled={actionPending} onClick={onStartCast} type="button">
+      <button
+        className="cast-action"
+        disabled={actionPending || castCooldownActive}
+        onClick={onStartCast}
+        type="button"
+      >
         Cast
       </button>
     );
