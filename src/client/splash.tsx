@@ -8,8 +8,7 @@ export const Splash = () => {
   const username = context?.username ?? 'angler';
 
   return (
-    <main className="game-shell">
-      <div className="game-bg" />
+    <main className="rk-shell">
       <section className="relative z-10 flex min-h-screen items-center justify-center px-5 py-6 text-white">
         <div className="w-full max-w-sm text-center">
           <img

@@ -8,6 +8,7 @@ type GameActions = {
   hook: () => Promise<GameSnapshot>;
   finishCast: (taps: number) => Promise<GameSnapshot>;
   selectLocation: (locationId: string) => Promise<GameSnapshot>;
+  selectBait: (baitId: string) => Promise<GameSnapshot>;
 };
 
 export type TrpcContext = {
@@ -59,6 +60,15 @@ export const appRouter = t.router({
       )
       .mutation(({ ctx, input }) => {
         return ctx.gameService.selectLocation(input.locationId);
+      }),
+    selectBait: publicProcedure
+      .input(
+        z.object({
+          baitId: z.string().min(1),
+        })
+      )
+      .mutation(({ ctx, input }) => {
+        return ctx.gameService.selectBait(input.baitId);
       }),
   }),
 });

@@ -5,7 +5,7 @@ The client package owns code that runs inside the Reddit iframe.
 ## Entrypoints
 
 - `splash.html` / `splash.tsx`: inline feed surface. Keep this small and avoid heavy game dependencies.
-- `game.html` / `game.tsx`: expanded game surface. This renders the fishing UI and calls the typed tRPC client.
+- `game.html` / `game.tsx`: expanded game surface. This renders the first `Пруд` screen, top location/bait selectors, fishing controls, and bottom tab placeholders.
 
 ## Supporting files
 

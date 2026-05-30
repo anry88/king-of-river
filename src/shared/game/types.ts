@@ -1,13 +1,26 @@
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'mythic' | 'legendary';
+
+export type WaterType = 'fresh' | 'salt';
 
 export type FishDefinition = {
   id: string;
   name: string;
   rarity: Rarity;
-  minWeightKg: number;
-  maxWeightKg: number;
-  baseCoins: number;
-  baseXp: number;
+  meanWeightKg: number;
+  weightVarianceKg: number;
+  isPredator: boolean;
+  water: WaterType;
+  image: string;
+};
+
+export type BaitDefinition = {
+  id: string;
+  name: string;
+  displayName: string;
+  water: WaterType;
+  isPredator: boolean;
+  rarityBonus: number;
+  image: string;
 };
 
 export type LocationFishWeight = {
@@ -20,6 +33,8 @@ export type LocationDefinition = {
   name: string;
   description: string;
   unlockLevel: number;
+  sizeMultiplier: number;
+  image: string;
   fishWeights: LocationFishWeight[];
 };
 
@@ -46,6 +61,7 @@ export type HookChallenge = {
 export type ActiveCast = {
   id: string;
   locationId: string;
+  baitId: string;
   stage: 'casting' | 'hooked';
   startedAt: number;
   hookedFish: HookedFish | null;
@@ -72,13 +88,14 @@ export type DailyRewardState = {
 };
 
 export type GameProfile = {
-  version: 1;
+  version: 2;
   postId: string;
   username: string;
   coins: number;
   xp: number;
   level: number;
   currentLocationId: string;
+  currentBaitId: string;
   currentRodId: string;
   discoveredFishIds: string[];
   catches: CatchRecord[];
@@ -89,6 +106,7 @@ export type GameProfile = {
 
 export type GameCatalog = {
   locations: LocationDefinition[];
+  baits: BaitDefinition[];
   rods: RodDefinition[];
   fish: FishDefinition[];
 };
@@ -112,6 +130,38 @@ const isNumber = (value: unknown): value is number => {
   return typeof value === 'number' && Number.isFinite(value);
 };
 
+const isRarity = (value: unknown): value is Rarity => {
+  return (
+    value === 'common' ||
+    value === 'uncommon' ||
+    value === 'rare' ||
+    value === 'epic' ||
+    value === 'mythic' ||
+    value === 'legendary'
+  );
+};
+
+const isHookedFish = (value: unknown): value is HookedFish => {
+  if (!isRecord(value)) return false;
+
+  return (
+    typeof value.fishId === 'string' &&
+    typeof value.fishName === 'string' &&
+    isRarity(value.rarity) &&
+    isNumber(value.weightKg)
+  );
+};
+
+const isHookChallenge = (value: unknown): value is HookChallenge => {
+  if (!isRecord(value)) return false;
+
+  return (
+    isNumber(value.tapGoal) &&
+    isNumber(value.durationMs) &&
+    isNumber(value.struggleIntensity)
+  );
+};
+
 const isCatchRecordArray = (value: unknown): value is CatchRecord[] => {
   if (!Array.isArray(value)) return false;
 
@@ -121,7 +171,7 @@ const isCatchRecordArray = (value: unknown): value is CatchRecord[] => {
       typeof item.id === 'string' &&
       typeof item.fishId === 'string' &&
       typeof item.fishName === 'string' &&
-      typeof item.rarity === 'string' &&
+      isRarity(item.rarity) &&
       isNumber(item.weightKg) &&
       isNumber(item.coins) &&
       isNumber(item.xp) &&
@@ -137,17 +187,18 @@ const isActiveCast = (value: unknown): value is ActiveCast => {
   return (
     typeof value.id === 'string' &&
     typeof value.locationId === 'string' &&
+    typeof value.baitId === 'string' &&
     (value.stage === 'casting' || value.stage === 'hooked') &&
     isNumber(value.startedAt) &&
-    (value.hookedFish === null || isRecord(value.hookedFish)) &&
-    (value.challenge === null || isRecord(value.challenge)) &&
+    (value.hookedFish === null || isHookedFish(value.hookedFish)) &&
+    (value.challenge === null || isHookChallenge(value.challenge)) &&
     (value.expiresAt === null || isNumber(value.expiresAt))
   );
 };
 
 export const isGameProfile = (value: unknown): value is GameProfile => {
   if (!isRecord(value)) return false;
-  if (value.version !== 1) return false;
+  if (value.version !== 2) return false;
 
   const dailyReward = value.dailyReward;
   if (!isRecord(dailyReward)) return false;
@@ -159,6 +210,7 @@ export const isGameProfile = (value: unknown): value is GameProfile => {
     isNumber(value.xp) &&
     isNumber(value.level) &&
     typeof value.currentLocationId === 'string' &&
+    typeof value.currentBaitId === 'string' &&
     typeof value.currentRodId === 'string' &&
     isStringArray(value.discoveredFishIds) &&
     isCatchRecordArray(value.catches) &&

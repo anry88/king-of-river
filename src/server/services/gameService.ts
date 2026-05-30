@@ -4,6 +4,7 @@ import {
   createInitialProfile,
   finishCast,
   hookCast,
+  selectBait,
   selectLocation,
   startCast,
 } from '../domain/fishing';
@@ -15,6 +16,7 @@ export type GameService = {
   hook: () => Promise<GameSnapshot>;
   finishCast: (taps: number) => Promise<GameSnapshot>;
   selectLocation: (locationId: string) => Promise<GameSnapshot>;
+  selectBait: (baitId: string) => Promise<GameSnapshot>;
 };
 
 export const createGameService = (
@@ -50,29 +52,33 @@ export const createGameService = (
       return {
         profile,
         catalog: gameCatalog,
-        message: 'Ready to fish.',
+        message: 'Можно рыбачить.',
         lastCatch: profile.catches[0] ?? null,
       };
     },
     startCast: async () => {
       const profile = await loadProfile();
-      return saveSnapshot(startCast(profile, Date.now()), 'Line cast.');
+      return saveSnapshot(startCast(profile, Date.now()), 'Поплавок на воде.');
     },
     hook: async () => {
       const profile = await loadProfile();
-      return saveSnapshot(hookCast(profile, Date.now()), 'Fish on the line.');
+      return saveSnapshot(hookCast(profile, Date.now()), 'Рыба на крючке.');
     },
     finishCast: async (taps) => {
       const profile = await loadProfile();
       const result = finishCast(profile, taps, Date.now());
       const message = result.success
-        ? `Landed ${result.catchRecord?.fishName ?? 'a fish'}.`
-        : 'The fish escaped.';
+        ? `Поймана рыба: ${result.catchRecord?.fishName ?? 'улов'}.`
+        : 'Рыба сорвалась.';
       return saveSnapshot(result.profile, message);
     },
     selectLocation: async (locationId) => {
       const profile = await loadProfile();
-      return saveSnapshot(selectLocation(profile, locationId, Date.now()), 'Location changed.');
+      return saveSnapshot(selectLocation(profile, locationId, Date.now()), 'Локация выбрана.');
+    },
+    selectBait: async (baitId) => {
+      const profile = await loadProfile();
+      return saveSnapshot(selectBait(profile, baitId, Date.now()), 'Приманка выбрана.');
     },
   };
 };

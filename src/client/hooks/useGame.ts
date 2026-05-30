@@ -141,6 +141,19 @@ export const useGame = () => {
     [runAction]
   );
 
+  const selectBaitAction = useCallback(
+    (baitId: string) => {
+      void runAction(
+        () =>
+          trpc.game.selectBait.mutate({
+            baitId,
+          }),
+        true
+      );
+    },
+    [runAction]
+  );
+
   const addTap = useCallback(() => {
     setState((current) => ({
       ...current,
@@ -154,6 +167,7 @@ export const useGame = () => {
     hook: hookAction,
     land: landAction,
     selectLocation: selectLocationAction,
+    selectBait: selectBaitAction,
     addTap,
   };
 };

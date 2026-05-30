@@ -8,7 +8,7 @@ The project starts from the official Devvit React template, but the starter coun
 - Hono and Devvit Web server APIs for the serverless runtime.
 - tRPC v11 for typed client/server game procedures.
 - Redis-backed save state scoped by Reddit post and username.
-- Shared TypeScript catalog/types for fish, locations, rods, casts, challenges, and catch records.
+- Shared TypeScript catalog/types for fish, locations, baits, rods, casts, challenges, and catch records.
 - RiverKing source assets reused for the first playable Reddit surface.
 
 Playtest subreddit:
@@ -29,6 +29,7 @@ Source inspiration:
 - Service orchestration in `src/server/services/gameService.ts`.
 - Redis persistence in `src/server/storage/gameRepository.ts`.
 - Shared game catalog and DTOs in `src/shared/game/`.
+- First playable screen with `Пруд`, four base baits, original RiverKing location/fish/menu assets, and bottom tab placeholders.
 - Moderator menu action to create a custom King of River post.
 - Documentation map matching the original RiverKing repository style.
 
@@ -56,10 +57,11 @@ flowchart LR
 
 1. Open the inline post card.
 2. Expand into the game.
-3. Cast a line at the current location.
-4. Hook a fish and reveal rarity, weight, and a tap challenge.
-5. Land or lose the fish.
-6. Save coins, XP, discoveries, and recent catches in Redis.
+3. Choose the current location and bait.
+4. Cast a line at the current location.
+5. Hook a fish and reveal rarity, weight, and a tap challenge.
+6. Land or lose the fish.
+7. Save coins, XP, discoveries, and recent catches in Redis.
 
 ## Commands
 
@@ -97,5 +99,5 @@ Devvit commands:
 - Add daily rewards, per-post leaderboards, and tournament windows.
 - Add quest and achievement services.
 - Add club/event data structures adapted to Reddit communities.
-- Add richer RiverKing fish art and lightweight animations.
+- Add additional RiverKing locations and lightweight animations.
 - Add tests for domain rules and repository serialization.

@@ -1,13 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import {
+  defaultBaitId,
   defaultLocationId,
   defaultRodId,
+  findBait,
   findFish,
   findLocation,
-  findRod,
 } from '../../shared/game/catalog';
 import type {
   ActiveCast,
+  BaitDefinition,
   CatchRecord,
   FishDefinition,
   GameProfile,
@@ -19,12 +21,18 @@ import type {
 
 const maxRecentCatches = 12;
 
-const rarityChallenge: Record<Rarity, number> = {
-  common: 1,
-  uncommon: 1.25,
-  rare: 1.65,
-  epic: 2.15,
-  legendary: 2.8,
+const rarityReward: Record<Rarity, { coins: number; xp: number }> = {
+  common: { coins: 4, xp: 5 },
+  uncommon: { coins: 9, xp: 12 },
+  rare: { coins: 20, xp: 26 },
+  epic: { coins: 44, xp: 56 },
+  mythic: { coins: 90, xp: 115 },
+  legendary: { coins: 160, xp: 180 },
+};
+
+type WeightedFish = {
+  fish: FishDefinition;
+  weight: number;
 };
 
 export class GameRuleError extends Error {
@@ -40,13 +48,14 @@ export const createInitialProfile = (
   now: number
 ): GameProfile => {
   return {
-    version: 1,
+    version: 2,
     postId,
     username,
     coins: 40,
     xp: 0,
     level: 1,
     currentLocationId: defaultLocationId,
+    currentBaitId: defaultBaitId,
     currentRodId: defaultRodId,
     discoveredFishIds: [],
     catches: [],
@@ -65,12 +74,14 @@ export const startCast = (profile: GameProfile, now: number): GameProfile => {
   }
 
   const location = requireUnlockedLocation(profile, profile.currentLocationId);
+  const bait = requireBait(profile.currentBaitId);
 
   return {
     ...profile,
     activeCast: {
       id: randomUUID(),
       locationId: location.id,
+      baitId: bait.id,
       stage: 'casting',
       startedAt: now,
       hookedFish: null,
@@ -84,9 +95,10 @@ export const startCast = (profile: GameProfile, now: number): GameProfile => {
 export const hookCast = (profile: GameProfile, now: number): GameProfile => {
   const activeCast = requireActiveCast(profile.activeCast, 'casting');
   const location = requireUnlockedLocation(profile, activeCast.locationId);
-  const fish = pickFish(location);
-  const hookedFish = createHookedFish(fish);
-  const challenge = createChallenge(hookedFish, profile.currentRodId);
+  const bait = requireBait(activeCast.baitId);
+  const fish = pickFish(location, bait);
+  const hookedFish = createHookedFish(fish, location);
+  const challenge = createChallenge(hookedFish);
 
   return {
     ...profile,
@@ -164,6 +176,21 @@ export const selectLocation = (
   };
 };
 
+export const selectBait = (
+  profile: GameProfile,
+  baitId: string,
+  now: number
+): GameProfile => {
+  const bait = requireBait(baitId);
+
+  return {
+    ...profile,
+    currentBaitId: bait.id,
+    activeCast: null,
+    updatedAt: now,
+  };
+};
+
 const requireUnlockedLocation = (
   profile: GameProfile,
   locationId: string
@@ -180,6 +207,15 @@ const requireUnlockedLocation = (
   return location;
 };
 
+const requireBait = (baitId: string): BaitDefinition => {
+  const bait = findBait(baitId);
+  if (!bait) {
+    throw new GameRuleError('Unknown bait.');
+  }
+
+  return bait;
+};
+
 const requireActiveCast = (
   activeCast: ActiveCast | null,
   stage: ActiveCast['stage']
@@ -191,13 +227,22 @@ const requireActiveCast = (
   return activeCast;
 };
 
-const pickFish = (location: LocationDefinition): FishDefinition => {
+const pickFish = (location: LocationDefinition, bait: BaitDefinition): FishDefinition => {
   const pool = location.fishWeights
     .map((entry) => {
       const fish = findFish(entry.fishId);
-      return fish ? { fish, weight: entry.weight } : null;
+      if (!fish) return null;
+
+      const predatorFactor = fish.isPredator === bait.isPredator ? 1 : 0.18;
+      const waterFactor = fish.water === bait.water ? 1 : 0.65;
+      const rarityFactor = rarityModifier(fish.rarity, bait.rarityBonus);
+
+      return {
+        fish,
+        weight: entry.weight * predatorFactor * waterFactor * rarityFactor,
+      };
     })
-    .filter((entry) => entry !== null);
+    .filter(isWeightedFish);
 
   const firstEntry = pool[0];
   if (!firstEntry) {
@@ -218,9 +263,19 @@ const pickFish = (location: LocationDefinition): FishDefinition => {
   return firstEntry.fish;
 };
 
-const createHookedFish = (fish: FishDefinition): HookedFish => {
-  const weightRange = fish.maxWeightKg - fish.minWeightKg;
-  const weightKg = roundWeight(fish.minWeightKg + Math.random() * weightRange);
+const isWeightedFish = (value: WeightedFish | null): value is WeightedFish => {
+  return value !== null && value.weight > 0;
+};
+
+const createHookedFish = (
+  fish: FishDefinition,
+  location: LocationDefinition
+): HookedFish => {
+  const weightKg = logNormalWeight(
+    fish.meanWeightKg,
+    fish.weightVarianceKg,
+    location.sizeMultiplier
+  );
 
   return {
     fishId: fish.id,
@@ -230,17 +285,15 @@ const createHookedFish = (fish: FishDefinition): HookedFish => {
   };
 };
 
-const createChallenge = (hookedFish: HookedFish, rodId: string): HookChallenge => {
-  const rod = findRod(rodId);
-  const rodPower = rod?.power ?? 1;
-  const rarityPower = rarityChallenge[hookedFish.rarity];
-  const tapGoal = Math.max(4, Math.round(5 + hookedFish.weightKg * rarityPower - rodPower));
-  const durationMs = Math.max(3500, Math.round(8200 - rarityPower * 700 + rodPower * 250));
+const createChallenge = (hookedFish: HookedFish): HookChallenge => {
+  const tapGoal = rarityTapCount(hookedFish.rarity) + weightTapCount(hookedFish.weightKg);
+  const durationMs = tapGoal > 15 ? 15000 : tapGoal > 10 ? 10000 : 5000;
+  const struggleIntensity = Number(((tapGoal - 3) / 19).toFixed(2));
 
   return {
     tapGoal,
     durationMs,
-    struggleIntensity: Number((rarityPower + hookedFish.weightKg / 12).toFixed(2)),
+    struggleIntensity: Math.min(1, Math.max(0, struggleIntensity)),
   };
 };
 
@@ -259,9 +312,9 @@ const createCatchRecord = (
     throw new GameRuleError('Hooked fish is missing from the catalog.');
   }
 
-  const rarityPower = rarityChallenge[hookedFish.rarity];
-  const coins = Math.round(fish.baseCoins * rarityPower + hookedFish.weightKg * 2);
-  const xp = Math.round(fish.baseXp * rarityPower + hookedFish.weightKg * 3);
+  const reward = rarityReward[hookedFish.rarity];
+  const coins = Math.max(1, Math.round(reward.coins + hookedFish.weightKg * 2));
+  const xp = Math.max(1, Math.round(reward.xp + hookedFish.weightKg * 3));
 
   return {
     id: randomUUID(),
@@ -277,8 +330,83 @@ const createCatchRecord = (
   };
 };
 
+const rarityModifier = (rarity: Rarity, factor: number): number => {
+  const normalizedFactor = Math.min(1, Math.max(0, factor));
+
+  switch (rarity) {
+    case 'common':
+      return 1 - 0.7 * normalizedFactor;
+    case 'uncommon':
+      return 0.6 + 0.3 * normalizedFactor;
+    case 'rare':
+      return 0.3 + 0.4 * normalizedFactor;
+    case 'epic':
+      return 0.2 + 0.3 * normalizedFactor;
+    case 'mythic':
+      return 0.15 + 0.25 * normalizedFactor;
+    case 'legendary':
+      return 0.1 + 0.2 * normalizedFactor;
+  }
+};
+
+const rarityTapCount = (rarity: Rarity): number => {
+  switch (rarity) {
+    case 'common':
+      return 2;
+    case 'uncommon':
+      return 4;
+    case 'rare':
+      return 6;
+    case 'epic':
+      return 8;
+    case 'mythic':
+      return 10;
+    case 'legendary':
+      return 12;
+  }
+};
+
+const weightTapCount = (weight: number): number => {
+  if (weight < 1) return 1;
+  if (weight < 5) return 2;
+  if (weight < 10) return 3;
+  if (weight < 30) return 4;
+  if (weight < 60) return 5;
+  if (weight < 100) return 6;
+  if (weight < 150) return 7;
+  if (weight < 250) return 8;
+  if (weight < 400) return 9;
+  return 10;
+};
+
 const calculateLevel = (xp: number): number => {
   return Math.max(1, Math.floor(Math.sqrt(xp / 60)) + 1);
+};
+
+const logNormalWeight = (
+  meanWeightKg: number,
+  weightVarianceKg: number,
+  sizeMultiplier: number
+): number => {
+  const mu = Math.log(
+    (meanWeightKg * meanWeightKg) / Math.sqrt(weightVarianceKg + meanWeightKg * meanWeightKg)
+  );
+  const sigma = Math.sqrt(Math.log(1 + weightVarianceKg / (meanWeightKg * meanWeightKg)));
+  const weightKg = Math.exp(mu + sigma * nextGaussian()) * sizeMultiplier;
+
+  return roundWeight(Math.max(0.05, weightKg));
+};
+
+const nextGaussian = (): number => {
+  while (true) {
+    const x = Math.random() * 2 - 1;
+    const y = Math.random() * 2 - 1;
+    const radiusSquared = x * x + y * y;
+
+    if (radiusSquared < 1 && radiusSquared !== 0) {
+      return x * Math.sqrt((-2 * Math.log(radiusSquared)) / radiusSquared);
+    }
+  }
 };
 
 const roundWeight = (weightKg: number): number => {

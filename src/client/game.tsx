@@ -5,17 +5,41 @@ import { createRoot } from 'react-dom/client';
 import { useGame } from './hooks/useGame';
 import type {
   ActiveCast,
+  BaitDefinition,
+  FishDefinition,
   GameCatalog,
   GameProfile,
+  LocationDefinition,
   Rarity,
 } from '../shared/game/types';
 
-type StatTileProps = {
-  label: string;
-  value: string;
+type SetupBarProps = {
+  catalog: GameCatalog;
+  profile: GameProfile;
+  disabled: boolean;
+  onSelectLocation: (locationId: string) => void;
+  onSelectBait: (baitId: string) => void;
 };
 
-type CastControlsProps = {
+type FishingStageProps = {
+  catalog: GameCatalog;
+  activeCast: ActiveCast | null;
+  actionPending: boolean;
+  selectedBait: BaitDefinition | null;
+  selectedLocation: LocationDefinition | null;
+  hookedFish: FishDefinition | null;
+  profile: GameProfile;
+  message: string;
+  errorMessage: string | null;
+  tapCount: number;
+  progressPercent: number;
+  onStartCast: () => void;
+  onHook: () => void;
+  onTap: () => void;
+  onLand: () => void;
+};
+
+type ActionControlsProps = {
   activeCast: ActiveCast | null;
   actionPending: boolean;
   tapCount: number;
@@ -25,24 +49,26 @@ type CastControlsProps = {
   onLand: () => void;
 };
 
-type LocationSelectProps = {
-  catalog: GameCatalog;
-  profile: GameProfile;
-  disabled: boolean;
-  onSelectLocation: (locationId: string) => void;
-};
-
-type CatchLogProps = {
-  profile: GameProfile;
+type StatPillProps = {
+  label: string;
+  value: string;
 };
 
 const rarityClass: Record<Rarity, string> = {
-  common: 'text-slate-100',
-  uncommon: 'text-emerald-200',
-  rare: 'text-sky-200',
-  epic: 'text-fuchsia-200',
-  legendary: 'text-amber-200',
+  common: 'rarity-common',
+  uncommon: 'rarity-uncommon',
+  rare: 'rarity-rare',
+  epic: 'rarity-epic',
+  mythic: 'rarity-mythic',
+  legendary: 'rarity-legendary',
 };
+
+const bottomTabs = [
+  { id: 'fishing', label: 'Рыбалка', icon: '/riverking/menu/fishing.webp', active: true },
+  { id: 'ratings', label: 'Рейтинги', icon: '/riverking/menu/ratings.webp', active: false },
+  { id: 'catalog', label: 'Каталог', icon: '/riverking/menu/guide.webp', active: false },
+  { id: 'shop', label: 'Магазин', icon: '/riverking/menu/shop.webp', active: false },
+];
 
 export const App = () => {
   const {
@@ -56,169 +82,242 @@ export const App = () => {
     land,
     addTap,
     selectLocation,
+    selectBait,
   } = useGame();
 
   if (loadState === 'loading') {
-    return (
-      <main className="game-shell">
-        <div className="game-bg" />
-        <section className="relative z-10 flex min-h-screen items-center justify-center px-6 text-white">
-          <div className="text-center">
-            <img
-              className="mx-auto mb-5 h-20 w-20 rounded-2xl shadow-2xl"
-              src="/riverking/icon.png"
-              alt="King of River icon"
-            />
-            <h1 className="text-3xl font-semibold">King of River</h1>
-            <p className="mt-2 text-sm text-sky-100">Loading fishing grounds</p>
-          </div>
-        </section>
-      </main>
-    );
+    return <LoadingState text="Загружаем Пруд" />;
   }
 
   if (!snapshot) {
-    return (
-      <main className="game-shell">
-        <div className="game-bg" />
-        <section className="relative z-10 flex min-h-screen items-center justify-center px-6 text-white">
-          <div className="max-w-sm text-center">
-            <img
-              className="mx-auto mb-5 h-20 w-20 rounded-2xl shadow-2xl"
-              src="/riverking/icon.png"
-              alt="King of River icon"
-            />
-            <h1 className="text-3xl font-semibold">King of River</h1>
-            <p className="mt-2 text-sm text-amber-100">
-              {errorMessage ?? 'Game loading failed.'}
-            </p>
-          </div>
-        </section>
-      </main>
-    );
+    return <LoadingState text={errorMessage ?? 'Игра не загрузилась'} />;
   }
 
   const { profile, catalog, message } = snapshot;
   const activeCast = profile.activeCast;
-  const hookedFish = activeCast?.hookedFish ?? null;
   const challenge = activeCast?.challenge ?? null;
   const selectedLocation =
     catalog.locations.find((location) => location.id === profile.currentLocationId) ??
-    catalog.locations[0];
+    catalog.locations[0] ??
+    null;
+  const selectedBait =
+    catalog.baits.find((bait) => bait.id === profile.currentBaitId) ??
+    catalog.baits[0] ??
+    null;
+  const hookedFish = activeCast?.hookedFish
+    ? catalog.fish.find((fish) => fish.id === activeCast.hookedFish?.fishId) ?? null
+    : null;
   const progressPercent = challenge
     ? Math.min(100, Math.round((tapCount / challenge.tapGoal) * 100))
     : 0;
 
   return (
-    <main className="game-shell">
-      <div className="game-bg" />
-      <section className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 px-4 py-5 text-white sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <img
-              className="h-12 w-12 rounded-xl shadow-xl"
-              src="/riverking/icon.png"
-              alt="King of River icon"
-            />
-            <div className="min-w-0">
-              <h1 className="truncate text-2xl font-semibold sm:text-3xl">
-                King of River
-              </h1>
-              <p className="truncate text-sm text-sky-100">
-                {profile.username} at {selectedLocation?.name ?? 'River Bank'}
-              </p>
-            </div>
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-right">
-            <StatTile label="Level" value={String(profile.level)} />
-            <StatTile label="Coins" value={String(profile.coins)} />
-            <StatTile label="Fish" value={String(profile.discoveredFishIds.length)} />
-          </div>
-        </header>
+    <main className="rk-shell">
+      <section className="rk-screen">
+        <SetupBar
+          catalog={catalog}
+          profile={profile}
+          disabled={Boolean(activeCast) || actionPending}
+          onSelectLocation={selectLocation}
+          onSelectBait={selectBait}
+        />
 
-        <section className="grid flex-1 gap-4 lg:grid-cols-[1fr_320px]">
-          <div className="game-stage">
-            <div className="absolute left-6 top-6 max-w-[70%]">
-              <p className="text-sm font-medium text-sky-100">{message}</p>
-              {errorMessage ? (
-                <p className="mt-1 text-sm font-medium text-amber-100">{errorMessage}</p>
-              ) : null}
-            </div>
+        <FishingStage
+          catalog={catalog}
+          activeCast={activeCast}
+          actionPending={actionPending}
+          selectedBait={selectedBait}
+          selectedLocation={selectedLocation}
+          hookedFish={hookedFish}
+          profile={profile}
+          message={message}
+          errorMessage={errorMessage}
+          tapCount={tapCount}
+          progressPercent={progressPercent}
+          onStartCast={startCast}
+          onHook={hook}
+          onTap={addTap}
+          onLand={land}
+        />
 
-            <div className="water-line">
-              <img
-                className={`bobber ${activeCast ? 'bobber-active' : ''}`}
-                src="/riverking/bobber.svg"
-                alt="Fishing bobber"
-              />
-            </div>
-
-            {hookedFish ? (
-              <div className="hooked-fish">
-                <p className={`text-xl font-semibold ${rarityClass[hookedFish.rarity]}`}>
-                  {hookedFish.fishName}
-                </p>
-                <p className="text-sm text-sky-100">
-                  {hookedFish.weightKg} kg / {hookedFish.rarity}
-                </p>
-              </div>
-            ) : null}
-
-            {challenge ? (
-              <div className="challenge-bar">
-                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-[0.12em] text-sky-100">
-                  <span>Pressure</span>
-                  <span>
-                    {tapCount}/{challenge.tapGoal}
-                  </span>
-                </div>
-                <div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-950/50">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-amber-200 transition-all"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            <CastControls
-              activeCast={activeCast}
-              actionPending={actionPending}
-              tapCount={tapCount}
-              onStartCast={startCast}
-              onHook={hook}
-              onTap={addTap}
-              onLand={land}
-            />
-          </div>
-
-          <aside className="side-panel">
-            <LocationSelect
-              catalog={catalog}
-              profile={profile}
-              disabled={Boolean(activeCast) || actionPending}
-              onSelectLocation={selectLocation}
-            />
-            <CatchLog profile={profile} />
-          </aside>
-        </section>
+        <BottomTabs />
       </section>
     </main>
   );
 };
 
-const StatTile = ({ label, value }: StatTileProps) => {
+const LoadingState = ({ text }: { text: string }) => {
   return (
-    <div className="min-w-16 rounded-lg border border-white/15 bg-slate-950/35 px-3 py-2 backdrop-blur">
-      <div className="text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-sky-100">
-        {label}
-      </div>
-      <div className="text-lg font-semibold">{value}</div>
-    </div>
+    <main className="rk-shell">
+      <section className="rk-loading">
+        <img className="rk-loading-icon" src="/riverking/icon.png" alt="King of River" />
+        <h1>King of River</h1>
+        <p>{text}</p>
+      </section>
+    </main>
   );
 };
 
-const CastControls = ({
+const SetupBar = ({
+  catalog,
+  profile,
+  disabled,
+  onSelectLocation,
+  onSelectBait,
+}: SetupBarProps) => {
+  return (
+    <header className="setup-bar">
+      <div className="location-strip" aria-label="Локация">
+        {catalog.locations.map((location) => {
+          const selected = location.id === profile.currentLocationId;
+
+          return (
+            <button
+              className={`setup-location ${selected ? 'setup-location-selected' : ''}`}
+              disabled={disabled}
+              key={location.id}
+              onClick={() => onSelectLocation(location.id)}
+              type="button"
+            >
+              <span>Локация</span>
+              <strong>{location.name}</strong>
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="bait-strip" aria-label="Приманка">
+        {catalog.baits.map((bait) => {
+          const selected = bait.id === profile.currentBaitId;
+
+          return (
+            <button
+              className={`bait-chip ${selected ? 'bait-chip-selected' : ''}`}
+              disabled={disabled}
+              key={bait.id}
+              onClick={() => onSelectBait(bait.id)}
+              type="button"
+            >
+              <img src={bait.image} alt="" />
+              <span>{bait.name}</span>
+            </button>
+          );
+        })}
+      </div>
+    </header>
+  );
+};
+
+const FishingStage = ({
+  catalog,
+  activeCast,
+  actionPending,
+  selectedBait,
+  selectedLocation,
+  hookedFish,
+  profile,
+  message,
+  errorMessage,
+  tapCount,
+  progressPercent,
+  onStartCast,
+  onHook,
+  onTap,
+  onLand,
+}: FishingStageProps) => {
+  const currentHooked = activeCast?.hookedFish ?? null;
+  const lastCatch = profile.catches[0] ?? null;
+  const lastCatchFish = lastCatch
+    ? catalog.fish.find((fish) => fish.id === lastCatch.fishId) ?? null
+    : null;
+  const backgroundImage = selectedLocation?.image ?? '/riverking/backgrounds/pond.webp';
+
+  return (
+    <section className="stage-wrap">
+      <div
+        className="pond-stage"
+        style={{
+          backgroundImage: `url(${backgroundImage})`,
+        }}
+      >
+        <div className="stage-shade" />
+
+        <div className="hud-row">
+          <div className="hud-message">
+            <strong>{selectedLocation?.name ?? 'Пруд'}</strong>
+            <span>{errorMessage ?? message}</span>
+          </div>
+          <div className="stat-row">
+            <StatPill label="Уровень" value={String(profile.level)} />
+            <StatPill label="Монеты" value={String(profile.coins)} />
+            <StatPill label="Рыбы" value={String(profile.discoveredFishIds.length)} />
+          </div>
+        </div>
+
+        <img className="stage-rod" src="/riverking/rods/yellow_rod.webp" alt="" />
+
+        <svg className="stage-line" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <path
+            className={activeCast ? 'line-active' : ''}
+            d={activeCast ? 'M 73 55 C 58 38, 48 35, 41 43' : 'M 73 55 C 61 62, 50 63, 42 59'}
+          />
+        </svg>
+
+        <div className={`bobber-node ${activeCast ? 'bobber-node-active' : ''}`}>
+          <img src="/riverking/bobber.svg" alt="" />
+          {selectedBait ? <img className="bait-on-hook" src={selectedBait.image} alt="" /> : null}
+        </div>
+
+        {currentHooked && hookedFish ? (
+          <div className="hooked-card">
+            <img src={hookedFish.image} alt="" />
+            <div>
+              <p className={rarityClass[currentHooked.rarity]}>{currentHooked.fishName}</p>
+              <span>{currentHooked.weightKg} кг</span>
+            </div>
+          </div>
+        ) : null}
+
+        {!activeCast && lastCatch && lastCatchFish ? (
+          <div className="last-catch-card">
+            <img src={lastCatchFish.image} alt="" />
+            <div>
+              <span>Последний улов</span>
+              <strong className={rarityClass[lastCatch.rarity]}>{lastCatch.fishName}</strong>
+              <small>{lastCatch.weightKg} кг</small>
+            </div>
+          </div>
+        ) : null}
+
+        {activeCast?.challenge ? (
+          <div className="challenge-panel">
+            <div className="challenge-copy">
+              <span>Натяжение</span>
+              <strong>
+                {tapCount}/{activeCast.challenge.tapGoal}
+              </strong>
+            </div>
+            <div className="challenge-track">
+              <div className="challenge-fill" style={{ width: `${progressPercent}%` }} />
+            </div>
+          </div>
+        ) : null}
+
+        <ActionControls
+          activeCast={activeCast}
+          actionPending={actionPending}
+          tapCount={tapCount}
+          onStartCast={onStartCast}
+          onHook={onHook}
+          onTap={onTap}
+          onLand={onLand}
+        />
+      </div>
+    </section>
+  );
+};
+
+const ActionControls = ({
   activeCast,
   actionPending,
   tapCount,
@@ -226,97 +325,59 @@ const CastControls = ({
   onHook,
   onTap,
   onLand,
-}: CastControlsProps) => {
+}: ActionControlsProps) => {
   if (!activeCast) {
     return (
-      <button className="primary-action" disabled={actionPending} onClick={onStartCast}>
-        Cast
+      <button className="cast-action" disabled={actionPending} onClick={onStartCast} type="button">
+        Забросить
       </button>
     );
   }
 
   if (activeCast.stage === 'casting') {
     return (
-      <button className="primary-action" disabled={actionPending} onClick={onHook}>
-        Hook
+      <button className="cast-action" disabled={actionPending} onClick={onHook} type="button">
+        Подсечь
       </button>
     );
   }
 
   return (
-    <div className="absolute inset-x-4 bottom-4 grid gap-3 sm:grid-cols-2">
-      <button className="primary-action static" disabled={actionPending} onClick={onTap}>
-        Tap {tapCount}
+    <div className="fight-actions">
+      <button className="fight-button" disabled={actionPending} onClick={onTap} type="button">
+        Тянуть {tapCount}
       </button>
-      <button className="secondary-action" disabled={actionPending} onClick={onLand}>
-        Land
+      <button className="land-button" disabled={actionPending} onClick={onLand} type="button">
+        Вытащить
       </button>
     </div>
   );
 };
 
-const LocationSelect = ({
-  catalog,
-  profile,
-  disabled,
-  onSelectLocation,
-}: LocationSelectProps) => {
+const StatPill = ({ label, value }: StatPillProps) => {
   return (
-    <section>
-      <h2 className="section-title">Locations</h2>
-      <div className="mt-3 grid gap-2">
-        {catalog.locations.map((location) => {
-          const locked = location.unlockLevel > profile.level;
-          const selected = location.id === profile.currentLocationId;
-
-          return (
-            <button
-              key={location.id}
-              className={`location-row ${selected ? 'location-row-selected' : ''}`}
-              disabled={disabled || locked}
-              onClick={() => onSelectLocation(location.id)}
-            >
-              <span className="font-semibold">{location.name}</span>
-              <span className="text-xs text-sky-100">
-                {locked ? `Level ${location.unlockLevel}` : location.description}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-    </section>
+    <div className="stat-pill">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 };
 
-const CatchLog = ({ profile }: CatchLogProps) => {
+const BottomTabs = () => {
   return (
-    <section className="mt-6">
-      <h2 className="section-title">Recent Catches</h2>
-      <div className="mt-3 grid gap-2">
-        {profile.catches.length === 0 ? (
-          <p className="rounded-lg border border-white/10 bg-slate-950/25 px-3 py-3 text-sm text-sky-100">
-            No catches yet.
-          </p>
-        ) : (
-          profile.catches.map((catchRecord) => (
-            <div
-              className="rounded-lg border border-white/10 bg-slate-950/25 px-3 py-2"
-              key={catchRecord.id}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <span className={`font-semibold ${rarityClass[catchRecord.rarity]}`}>
-                  {catchRecord.fishName}
-                </span>
-                <span className="text-sm text-sky-100">{catchRecord.weightKg} kg</span>
-              </div>
-              <div className="mt-1 text-xs text-sky-100">
-                +{catchRecord.coins} coins / +{catchRecord.xp} xp
-              </div>
-            </div>
-          ))
-        )}
-      </div>
-    </section>
+    <nav className="bottom-tabs" aria-label="Разделы">
+      {bottomTabs.map((tab) => (
+        <button
+          className={`bottom-tab ${tab.active ? 'bottom-tab-active' : ''}`}
+          disabled={!tab.active}
+          key={tab.id}
+          type="button"
+        >
+          <img src={tab.icon} alt="" />
+          <span>{tab.label}</span>
+        </button>
+      ))}
+    </nav>
   );
 };
 
