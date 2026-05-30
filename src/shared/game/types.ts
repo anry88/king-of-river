@@ -84,6 +84,8 @@ export type CatchRecord = {
   xp: number;
   caughtAt: number;
   locationId: string;
+  castX?: number;
+  castY?: number;
   isNewDiscovery: boolean;
 };
 
@@ -182,6 +184,8 @@ const isCatchRecordArray = (value: unknown): value is CatchRecord[] => {
       isNumber(item.xp) &&
       isNumber(item.caughtAt) &&
       typeof item.locationId === 'string' &&
+      (item.castX === undefined || isNumber(item.castX)) &&
+      (item.castY === undefined || isNumber(item.castY)) &&
       typeof item.isNewDiscovery === 'boolean'
     );
   });

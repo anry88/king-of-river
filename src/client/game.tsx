@@ -7,6 +7,8 @@ import { useGame } from './hooks/useGame';
 import type {
   ActiveCast,
   BaitDefinition,
+  CatchRecord,
+  FishDefinition,
   GameProfile,
   LocationDefinition,
 } from '../shared/game/types';
@@ -25,6 +27,8 @@ type FishingStageProps = {
   activeCast: ActiveCast | null;
   actionPending: boolean;
   selectedBait: BaitDefinition | null;
+  caughtFish: FishDefinition | null;
+  lastCatch: CatchRecord | null;
   selectedLocation: LocationDefinition | null;
   profile: GameProfile;
   message: string;
@@ -46,6 +50,13 @@ type ActionControlsProps = {
 type StatPillProps = {
   label: string;
   value: string;
+};
+
+type CatchFlightProps = {
+  catchRecord: CatchRecord;
+  fish: FishDefinition;
+  startXPercent: number;
+  startYPercent: number;
 };
 
 type StageSize = {
@@ -322,6 +333,9 @@ export const App = () => {
     catalog.baits.find((bait) => bait.id === profile.currentBaitId) ??
     catalog.baits[0] ??
     null;
+  const lastCatch = snapshot.lastCatch;
+  const caughtFish =
+    lastCatch ? catalog.fish.find((fish) => fish.id === lastCatch.fishId) ?? null : null;
 
   return (
     <main className="rk-shell">
@@ -341,6 +355,8 @@ export const App = () => {
           activeCast={activeCast}
           actionPending={actionPending}
           selectedBait={selectedBait}
+          caughtFish={caughtFish}
+          lastCatch={lastCatch}
           selectedLocation={selectedLocation}
           profile={profile}
           message={message}
@@ -451,6 +467,8 @@ const FishingStage = ({
   activeCast,
   actionPending,
   selectedBait,
+  caughtFish,
+  lastCatch,
   selectedLocation,
   profile,
   message,
@@ -465,16 +483,27 @@ const FishingStage = ({
   const now = useCastClock(activeCast);
   const stageRef = useRef<HTMLDivElement>(null);
   const stageSize = useStageSize(stageRef);
+
   const rodGeometry = useMemo(
     () => buildRodGeometry(stageSize, activeCast),
     [activeCast, stageSize]
   );
+  const biteReady = activeCast?.stage === 'casting' && now >= activeCast.hookReadyAt;
   const rigStateClass =
     activeCast?.stage === 'hooked'
       ? 'fishing-rig-hooked'
+      : biteReady
+        ? 'fishing-rig-bite'
       : activeCast
         ? 'fishing-rig-active'
         : 'fishing-rig-idle';
+  const shouldShowCatchFlight = Boolean(
+    lastCatch && caughtFish && message.startsWith('Caught:')
+  );
+  const catchFlightStart = {
+    x: Math.min(0.88, Math.max(0.05, lastCatch?.castX ?? 0.44)) * 100,
+    y: Math.min(0.9, Math.max(0.42, lastCatch?.castY ?? 0.58)) * 100,
+  };
 
   return (
     <section className="stage-wrap">
@@ -547,6 +576,16 @@ const FishingStage = ({
           </>
         ) : null}
 
+        {shouldShowCatchFlight && lastCatch && caughtFish ? (
+          <CatchFlight
+            catchRecord={lastCatch}
+            fish={caughtFish}
+            key={lastCatch.id}
+            startXPercent={catchFlightStart.x}
+            startYPercent={catchFlightStart.y}
+          />
+        ) : null}
+
         <ActionControls
           activeCast={activeCast}
           actionPending={actionPending}
@@ -557,6 +596,26 @@ const FishingStage = ({
         />
       </div>
     </section>
+  );
+};
+
+const CatchFlight = ({
+  catchRecord,
+  fish,
+  startXPercent,
+  startYPercent,
+}: CatchFlightProps) => {
+  return (
+    <div
+      className="catch-flight"
+      style={{
+        left: `${startXPercent}%`,
+        top: `${startYPercent}%`,
+      }}
+      aria-hidden="true"
+    >
+      <img src={fish.image} alt={catchRecord.fishName} />
+    </div>
   );
 };
 

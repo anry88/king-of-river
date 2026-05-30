@@ -425,6 +425,8 @@ const createCatchRecord = (
     xp,
     caughtAt: now,
     locationId: activeCast.locationId,
+    castX: activeCast.castX,
+    castY: activeCast.castY,
     isNewDiscovery: !profile.discoveredFishIds.includes(hookedFish.fishId),
   };
 };

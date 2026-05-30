@@ -356,15 +356,15 @@
   }
 
   .rod-line {
-    stroke: rgb(255 247 214 / 0.55);
-    stroke-width: 1.1px;
-    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5));
+    stroke: rgb(255 247 214 / 0.34);
+    stroke-width: 1px;
+    filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.34));
   }
 
   .water-line {
-    stroke: rgb(255 247 214 / 0.74);
-    stroke-width: 1.15px;
-    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.58));
+    stroke: rgb(255 247 214 / 0.42);
+    stroke-width: 1px;
+    filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.36));
   }
 
   .fishing-rig {
@@ -374,9 +374,9 @@
     pointer-events: none;
   }
 
-  .stage-water-line.fishing-rig-active .water-line,
+  .stage-water-line.fishing-rig-bite .water-line,
   .stage-water-line.fishing-rig-hooked .water-line {
-    animation: line-pulse 0.72s ease-in-out infinite;
+    animation: line-pulse 0.46s ease-in-out infinite;
   }
 
   .bobber-node {
@@ -402,13 +402,13 @@
     left: 22px;
     width: 1.2px;
     height: 36px;
-    background: rgb(255 247 214 / 0.64);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+    background: rgb(255 247 214 / 0.42);
+    box-shadow: 0 1px 1px rgb(0 0 0 / 0.34);
   }
 
-  .fishing-rig-active .bobber-node,
-  .fishing-rig-hooked .bobber-node {
-    animation: bobber-drift 1.15s ease-in-out infinite;
+  .fishing-rig-bite .bobber-node {
+    animation: bobber-bite 0.46s ease-in-out infinite;
+    transform-origin: 50% 78%;
   }
 
   .hook-icon {
@@ -417,7 +417,7 @@
     left: 14px;
     width: 18px;
     height: 18px;
-    z-index: 4;
+    z-index: 6;
     overflow: visible;
     fill: none;
     stroke: rgb(255 247 214 / 0.84);
@@ -429,13 +429,29 @@
 
   .bait-on-hook {
     position: absolute;
-    top: 24px;
+    top: 36px;
     left: 12px;
     z-index: 5;
     width: 20px;
     height: 20px;
     object-fit: contain;
     filter: drop-shadow(0 5px 8px rgb(0 0 0 / 0.44));
+  }
+
+  .catch-flight {
+    position: absolute;
+    z-index: 6;
+    width: 82px;
+    height: 44px;
+    pointer-events: none;
+    filter: drop-shadow(0 18px 16px rgb(0 0 0 / 0.46));
+    animation: catch-flight 1.3s cubic-bezier(0.18, 0.82, 0.24, 1) forwards;
+  }
+
+  .catch-flight img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
 
   .cast-action {
@@ -525,25 +541,48 @@
 
 }
 
-@keyframes bobber-drift {
+@keyframes bobber-bite {
   0%,
   100% {
     transform: translateY(0) rotate(-2deg);
+    filter: brightness(1);
   }
 
   50% {
-    transform: translate(2px, 3px) rotate(2deg);
+    transform: translate(-1px, 6px) rotate(4deg);
+    filter: brightness(1.14);
   }
 }
 
 @keyframes line-pulse {
   0%,
   100% {
-    stroke-width: 1.15px;
+    stroke-width: 1px;
   }
 
   50% {
-    stroke-width: 1.85px;
+    stroke-width: 1.35px;
+  }
+}
+
+@keyframes catch-flight {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.36) rotate(-7deg);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  68% {
+    opacity: 1;
+    transform: translate(-50%, 78px) scale(1.24) rotate(4deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 160px) scale(1.7) rotate(9deg);
   }
 }
 
@@ -614,6 +653,11 @@
 
   .stat-pill span {
     font-size: 0.56rem;
+  }
+
+  .catch-flight {
+    width: 72px;
+    height: 38px;
   }
 
 }
