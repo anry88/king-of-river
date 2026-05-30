@@ -260,16 +260,16 @@
 
   .outcome-chip {
     max-width: 58%;
-    border: 1px solid rgb(255 255 255 / 0.14);
+    border: 1px solid rgb(238 187 78 / 0.5);
     border-radius: 8px;
-    background: rgb(6 16 13 / 0.52);
+    background: #152016;
     padding: 8px 10px;
     color: #fff1b8;
     font-size: 0.82rem;
     font-weight: 900;
     line-height: 1.15;
     text-shadow: 0 1px 4px rgb(0 0 0 / 0.55);
-    backdrop-filter: blur(6px);
+    animation: outcome-chip-life 3.2s ease forwards;
   }
 
   .stat-row {
@@ -377,59 +377,6 @@
     filter: drop-shadow(0 5px 8px rgb(0 0 0 / 0.44));
   }
 
-  .last-catch-card img {
-    width: 76px;
-    height: 58px;
-    flex: 0 0 auto;
-    object-fit: contain;
-    filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.36));
-  }
-
-  .last-catch-card span,
-  .last-catch-card strong,
-  .last-catch-card small {
-    margin: 0;
-    display: block;
-  }
-
-  .last-catch-card strong {
-    overflow-wrap: anywhere;
-    font-size: 1rem;
-    font-weight: 900;
-    line-height: 1.08;
-  }
-
-  .last-catch-card small {
-    margin-top: 3px;
-    color: #dcd3b3;
-    font-size: 0.84rem;
-    font-weight: 800;
-  }
-
-  .last-catch-card {
-    position: absolute;
-    z-index: 4;
-    right: 14px;
-    bottom: 104px;
-    display: flex;
-    max-width: min(350px, calc(100% - 28px));
-    align-items: center;
-    gap: 10px;
-    border: 1px solid rgb(255 255 255 / 0.12);
-    border-radius: 8px;
-    background: rgb(6 16 13 / 0.5);
-    padding: 8px 10px;
-    backdrop-filter: blur(8px);
-  }
-
-  .last-catch-card span {
-    color: #b9d9c8;
-    font-size: 0.68rem;
-    font-weight: 900;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-  }
-
   .cast-action {
     border: 0;
     border-radius: 8px;
@@ -444,12 +391,13 @@
   .cast-action {
     position: absolute;
     z-index: 7;
-    right: 16px;
+    left: 50%;
     bottom: 18px;
     min-width: 148px;
     min-height: 48px;
     background: linear-gradient(180deg, #fff1a9, #e4ab3d);
     padding: 0 22px;
+    transform: translateX(-50%);
   }
 
   .cast-action-pull {
@@ -458,7 +406,7 @@
 
   .cast-action:hover:not(:disabled) {
     filter: brightness(1.06);
-    transform: translateY(-1px);
+    transform: translate(-50%, -1px);
   }
 
   .bottom-tabs {
@@ -514,29 +462,6 @@
     opacity: 0.72;
   }
 
-  .rarity-common {
-    color: #f7f2dd;
-  }
-
-  .rarity-uncommon {
-    color: #86efac;
-  }
-
-  .rarity-rare {
-    color: #7dd3fc;
-  }
-
-  .rarity-epic {
-    color: #d8b4fe;
-  }
-
-  .rarity-mythic {
-    color: #ffb86b;
-  }
-
-  .rarity-legendary {
-    color: #facc15;
-  }
 }
 
 @keyframes bobber-drift {
@@ -558,6 +483,19 @@
 
   50% {
     stroke-width: 0.52;
+  }
+}
+
+@keyframes outcome-chip-life {
+  0%,
+  76% {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  100% {
+    opacity: 0;
+    visibility: hidden;
   }
 }
 
@@ -617,7 +555,4 @@
     font-size: 0.56rem;
   }
 
-  .last-catch-card {
-    left: 14px;
-  }
 }

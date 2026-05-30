@@ -14,7 +14,7 @@ type UseGameState = {
 
 const requestTimeoutMs = 10000;
 
-const escapedMessage = 'Рыба сорвалась.';
+const escapedMessage = 'The fish got away.';
 
 const withTimeout = async <T,>(promise: Promise<T>, label: string): Promise<T> => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;

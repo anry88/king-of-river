@@ -29,7 +29,7 @@ Source inspiration:
 - Service orchestration in `src/server/services/gameService.ts`.
 - Redis persistence in `src/server/storage/gameRepository.ts`.
 - Shared game catalog and DTOs in `src/shared/game/`.
-- First playable screen with `Пруд`, a compact bait picker for four base baits, original RiverKing location/fish/menu assets, and bottom tab placeholders.
+- First playable screen with `Pond`, a compact bait picker for four base baits, original RiverKing location/fish/menu assets, and bottom tab placeholders.
 - Moderator menu action to create a custom King of River post.
 - Documentation map matching the original RiverKing repository style.
 

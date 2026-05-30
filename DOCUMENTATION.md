@@ -59,9 +59,9 @@ The saved profile contains:
 
 The first playable screen mirrors the Android RiverKing fishing surface at a small scope:
 
-- one regular location, `Пруд`, using the original Android background asset
-- the original `Пруд` fish pool and weights, including rare koi entries
-- a top location button and a compact bait picker for `Пресная мирная`, `Пресная хищная`, `Морская мирная`, `Морская хищная`
+- one regular location, `Pond`, using the original Android background asset
+- the original `Pond` fish pool and weights, including rare koi entries
+- a top location button and a compact bait picker for `Fresh Peaceful`, `Fresh Predator`, `Sea Peaceful`, `Sea Predator`
 - event-style bait weighting, so bait water type biases the pool but does not hard-filter it
 - hidden landing tap goals with timeout-based escapes
 - bottom tab placeholders for fishing, ratings, catalog, and shop

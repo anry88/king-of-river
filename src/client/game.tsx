@@ -6,14 +6,12 @@ import { useGame } from './hooks/useGame';
 import type {
   ActiveCast,
   BaitDefinition,
-  GameCatalog,
   GameProfile,
   LocationDefinition,
-  Rarity,
 } from '../shared/game/types';
 
 type SetupBarProps = {
-  catalog: GameCatalog;
+  baits: BaitDefinition[];
   profile: GameProfile;
   selectedBait: BaitDefinition | null;
   selectedLocation: LocationDefinition | null;
@@ -23,7 +21,6 @@ type SetupBarProps = {
 };
 
 type FishingStageProps = {
-  catalog: GameCatalog;
   activeCast: ActiveCast | null;
   actionPending: boolean;
   selectedBait: BaitDefinition | null;
@@ -49,20 +46,11 @@ type StatPillProps = {
   value: string;
 };
 
-const rarityClass: Record<Rarity, string> = {
-  common: 'rarity-common',
-  uncommon: 'rarity-uncommon',
-  rare: 'rarity-rare',
-  epic: 'rarity-epic',
-  mythic: 'rarity-mythic',
-  legendary: 'rarity-legendary',
-};
-
 const bottomTabs = [
-  { id: 'fishing', label: 'Рыбалка', icon: '/riverking/menu/fishing.webp', active: true },
-  { id: 'ratings', label: 'Рейтинги', icon: '/riverking/menu/ratings.webp', active: false },
-  { id: 'catalog', label: 'Каталог', icon: '/riverking/menu/guide.webp', active: false },
-  { id: 'shop', label: 'Магазин', icon: '/riverking/menu/shop.webp', active: false },
+  { id: 'fishing', label: 'Fishing', icon: '/riverking/menu/fishing.webp', active: true },
+  { id: 'ratings', label: 'Ratings', icon: '/riverking/menu/ratings.webp', active: false },
+  { id: 'catalog', label: 'Catalog', icon: '/riverking/menu/guide.webp', active: false },
+  { id: 'shop', label: 'Shop', icon: '/riverking/menu/shop.webp', active: false },
 ];
 
 export const App = () => {
@@ -79,11 +67,11 @@ export const App = () => {
   } = useGame();
 
   if (loadState === 'loading') {
-    return <LoadingState text="Загружаем Пруд" />;
+    return <LoadingState text="Loading Pond" />;
   }
 
   if (!snapshot) {
-    return <LoadingState text={errorMessage ?? 'Игра не загрузилась'} />;
+    return <LoadingState text={errorMessage ?? 'Game failed to load'} />;
   }
 
   const { profile, catalog, message } = snapshot;
@@ -101,7 +89,7 @@ export const App = () => {
     <main className="rk-shell">
       <section className="rk-screen">
         <SetupBar
-          catalog={catalog}
+          baits={catalog.baits}
           profile={profile}
           selectedBait={selectedBait}
           selectedLocation={selectedLocation}
@@ -111,7 +99,6 @@ export const App = () => {
         />
 
         <FishingStage
-          catalog={catalog}
           activeCast={activeCast}
           actionPending={actionPending}
           selectedBait={selectedBait}
@@ -143,7 +130,7 @@ const LoadingState = ({ text }: { text: string }) => {
 };
 
 const SetupBar = ({
-  catalog,
+  baits,
   profile,
   selectedBait,
   selectedLocation,
@@ -166,8 +153,8 @@ const SetupBar = ({
         onClick={() => onSelectLocation(selectedLocation?.id ?? profile.currentLocationId)}
         type="button"
       >
-        <span className="setup-label">Локация</span>
-        <strong>{selectedLocation?.name ?? 'Пруд'}</strong>
+        <span className="setup-label">Location</span>
+        <strong>{selectedLocation?.name ?? 'Pond'}</strong>
       </button>
 
       <div className="setup-picker-wrap">
@@ -179,8 +166,8 @@ const SetupBar = ({
         >
           {selectedBait ? <img src={selectedBait.image} alt="" /> : null}
           <span>
-            <span className="setup-label">Приманка</span>
-            <strong>{selectedBait?.name ?? 'Выбрать'}</strong>
+            <span className="setup-label">Bait</span>
+            <strong>{selectedBait?.name ?? 'Choose'}</strong>
           </span>
           <span className="setup-caret" aria-hidden="true">
             ▾
@@ -188,8 +175,8 @@ const SetupBar = ({
         </button>
 
         {baitPickerOpen && !disabled ? (
-          <div className="bait-picker" aria-label="Выбор приманки">
-            {catalog.baits.map((bait) => {
+          <div className="bait-picker" aria-label="Bait picker">
+            {baits.map((bait) => {
               const selected = bait.id === profile.currentBaitId;
 
               return (
@@ -212,7 +199,6 @@ const SetupBar = ({
 };
 
 const FishingStage = ({
-  catalog,
   activeCast,
   actionPending,
   selectedBait,
@@ -224,12 +210,9 @@ const FishingStage = ({
   onHook,
   onPull,
 }: FishingStageProps) => {
-  const lastCatch = profile.catches[0] ?? null;
-  const lastCatchFish = lastCatch
-    ? catalog.fish.find((fish) => fish.id === lastCatch.fishId) ?? null
-    : null;
   const backgroundImage = selectedLocation?.image ?? '/riverking/backgrounds/pond.webp';
   const outcomeMessage = errorMessage ?? message;
+  const outcomeKey = `${profile.updatedAt}-${outcomeMessage}`;
 
   return (
     <section className="stage-wrap">
@@ -242,9 +225,15 @@ const FishingStage = ({
         <div className="stage-shade" />
 
         <div className="hud-row">
-          {outcomeMessage ? <div className="outcome-chip">{outcomeMessage}</div> : <span />}
+          {outcomeMessage ? (
+            <div className="outcome-chip" key={outcomeKey}>
+              {outcomeMessage}
+            </div>
+          ) : (
+            <span />
+          )}
           <div className="stat-row">
-            <StatPill label="Монеты" value={String(profile.coins)} />
+            <StatPill label="Coins" value={String(profile.coins)} />
           </div>
         </div>
 
@@ -261,17 +250,6 @@ const FishingStage = ({
               {selectedBait ? <img className="bait-on-hook" src={selectedBait.image} alt="" /> : null}
             </div>
           </>
-        ) : null}
-
-        {!activeCast && lastCatch && lastCatchFish ? (
-          <div className="last-catch-card">
-            <img src={lastCatchFish.image} alt="" />
-            <div>
-              <span>Последний улов</span>
-              <strong className={rarityClass[lastCatch.rarity]}>{lastCatch.fishName}</strong>
-              <small>{lastCatch.weightKg} кг</small>
-            </div>
-          </div>
         ) : null}
 
         <ActionControls
@@ -296,7 +274,7 @@ const ActionControls = ({
   if (!activeCast) {
     return (
       <button className="cast-action" disabled={actionPending} onClick={onStartCast} type="button">
-        Забросить
+        Cast
       </button>
     );
   }
@@ -304,14 +282,14 @@ const ActionControls = ({
   if (activeCast.stage === 'casting') {
     return (
       <button className="cast-action" disabled={actionPending} onClick={onHook} type="button">
-        Подсечь
+        Hook
       </button>
     );
   }
 
   return (
     <button className="cast-action cast-action-pull" disabled={actionPending} onClick={onPull} type="button">
-      Тянуть
+      Pull
     </button>
   );
 };
@@ -327,7 +305,7 @@ const StatPill = ({ label, value }: StatPillProps) => {
 
 const BottomTabs = () => {
   return (
-    <nav className="bottom-tabs" aria-label="Разделы">
+    <nav className="bottom-tabs" aria-label="Sections">
       {bottomTabs.map((tab) => (
         <button
           className={`bottom-tab ${tab.active ? 'bottom-tab-active' : ''}`}

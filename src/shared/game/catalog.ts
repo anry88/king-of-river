@@ -9,7 +9,7 @@ import type {
 export const fishCatalog: FishDefinition[] = [
   {
     id: 'karas',
-    name: 'Карась',
+    name: 'Crucian Carp',
     rarity: 'common',
     meanWeightKg: 0.3,
     weightVarianceKg: 0.1,
@@ -19,7 +19,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'plotva',
-    name: 'Плотва',
+    name: 'Roach',
     rarity: 'common',
     meanWeightKg: 0.2,
     weightVarianceKg: 0.05,
@@ -29,7 +29,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'ukleyka',
-    name: 'Уклейка',
+    name: 'Bleak',
     rarity: 'common',
     meanWeightKg: 0.05,
     weightVarianceKg: 0.02,
@@ -39,7 +39,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'peskar',
-    name: 'Пескарь',
+    name: 'Gudgeon',
     rarity: 'common',
     meanWeightKg: 0.07,
     weightVarianceKg: 0.03,
@@ -49,7 +49,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'krasnopyorka',
-    name: 'Краснопёрка',
+    name: 'Rudd',
     rarity: 'common',
     meanWeightKg: 0.15,
     weightVarianceKg: 0.05,
@@ -59,7 +59,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'gustera',
-    name: 'Густера',
+    name: 'Silver Bream',
     rarity: 'common',
     meanWeightKg: 0.35,
     weightVarianceKg: 0.12,
@@ -69,7 +69,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'verhoplavka',
-    name: 'Верхоплавка',
+    name: 'Sunbleak',
     rarity: 'common',
     meanWeightKg: 0.01,
     weightVarianceKg: 0.005,
@@ -79,7 +79,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'vyun',
-    name: 'Вьюн',
+    name: 'Loach',
     rarity: 'common',
     meanWeightKg: 0.12,
     weightVarianceKg: 0.05,
@@ -89,7 +89,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'okun',
-    name: 'Окунь',
+    name: 'Perch',
     rarity: 'common',
     meanWeightKg: 0.25,
     weightVarianceKg: 0.07,
@@ -99,7 +99,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'yorsh',
-    name: 'Ёрш',
+    name: 'Ruffe',
     rarity: 'common',
     meanWeightKg: 0.08,
     weightVarianceKg: 0.03,
@@ -109,7 +109,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'rotan',
-    name: 'Ротан',
+    name: 'Amur Sleeper',
     rarity: 'common',
     meanWeightKg: 0.15,
     weightVarianceKg: 0.05,
@@ -119,7 +119,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'lesch',
-    name: 'Лещ',
+    name: 'Bream',
     rarity: 'uncommon',
     meanWeightKg: 0.8,
     weightVarianceKg: 0.2,
@@ -129,7 +129,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'pelyad',
-    name: 'Пелядь',
+    name: 'Peled',
     rarity: 'uncommon',
     meanWeightKg: 1.3,
     weightVarianceKg: 0.6,
@@ -139,7 +139,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'lin',
-    name: 'Линь',
+    name: 'Tench',
     rarity: 'uncommon',
     meanWeightKg: 0.7,
     weightVarianceKg: 0.3,
@@ -149,7 +149,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'yaz',
-    name: 'Язь',
+    name: 'Ide',
     rarity: 'uncommon',
     meanWeightKg: 1.2,
     weightVarianceKg: 0.5,
@@ -159,7 +159,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'karp',
-    name: 'Карп',
+    name: 'Carp',
     rarity: 'rare',
     meanWeightKg: 2.5,
     weightVarianceKg: 1,
@@ -169,7 +169,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'schuka',
-    name: 'Щука',
+    name: 'Pike',
     rarity: 'rare',
     meanWeightKg: 3,
     weightVarianceKg: 1.2,
@@ -179,7 +179,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'ugor-european',
-    name: 'Угорь европейский',
+    name: 'European Eel',
     rarity: 'epic',
     meanWeightKg: 1.5,
     weightVarianceKg: 0.7,
@@ -189,7 +189,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'som-european',
-    name: 'Сом европейский',
+    name: 'Wels Catfish',
     rarity: 'epic',
     meanWeightKg: 8,
     weightVarianceKg: 4,
@@ -199,7 +199,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-kohaku',
-    name: 'Карп кои (Кохаку)',
+    name: 'Koi Carp (Kohaku)',
     rarity: 'mythic',
     meanWeightKg: 2.5,
     weightVarianceKg: 1.2,
@@ -209,7 +209,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-sanke',
-    name: 'Карп кои (Тайсё Сансёку)',
+    name: 'Koi Carp (Taisho Sanke)',
     rarity: 'mythic',
     meanWeightKg: 2.6,
     weightVarianceKg: 1.3,
@@ -219,7 +219,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-showa',
-    name: 'Карп кои (Сёва Сансёку)',
+    name: 'Koi Carp (Showa Sanshoku)',
     rarity: 'mythic',
     meanWeightKg: 2.8,
     weightVarianceKg: 1.4,
@@ -229,7 +229,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-utsuri',
-    name: 'Карп кои (Уцуримоно)',
+    name: 'Koi Carp (Utsurimono)',
     rarity: 'mythic',
     meanWeightKg: 3,
     weightVarianceKg: 1.5,
@@ -239,7 +239,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-bekko',
-    name: 'Карп кои (Бэкко)',
+    name: 'Koi Carp (Bekko)',
     rarity: 'mythic',
     meanWeightKg: 2.4,
     weightVarianceKg: 1.1,
@@ -249,7 +249,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-tancho',
-    name: 'Карп кои (Тантё)',
+    name: 'Koi Carp (Tancho)',
     rarity: 'mythic',
     meanWeightKg: 2.7,
     weightVarianceKg: 1.2,
@@ -259,7 +259,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-asagi',
-    name: 'Карп кои (Асаги)',
+    name: 'Koi Carp (Asagi)',
     rarity: 'mythic',
     meanWeightKg: 3.2,
     weightVarianceKg: 1.6,
@@ -269,7 +269,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-shusui',
-    name: 'Карп кои (Сюсуй)',
+    name: 'Koi Carp (Shusui)',
     rarity: 'mythic',
     meanWeightKg: 3,
     weightVarianceKg: 1.4,
@@ -279,7 +279,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-koromo',
-    name: 'Карп кои (Коромо)',
+    name: 'Koi Carp (Koromo)',
     rarity: 'mythic',
     meanWeightKg: 2.6,
     weightVarianceKg: 1.2,
@@ -289,7 +289,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-ginrin',
-    name: 'Карп кои (Кингинрин)',
+    name: 'Koi Carp (Kinginrin)',
     rarity: 'mythic',
     meanWeightKg: 2.3,
     weightVarianceKg: 1,
@@ -299,7 +299,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-kawarimono',
-    name: 'Карп кои (Каваримоно)',
+    name: 'Koi Carp (Kawarimono)',
     rarity: 'mythic',
     meanWeightKg: 3,
     weightVarianceKg: 1.5,
@@ -309,7 +309,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-ogon',
-    name: 'Карп кои (Огон)',
+    name: 'Koi Carp (Ogon)',
     rarity: 'mythic',
     meanWeightKg: 3.4,
     weightVarianceKg: 1.7,
@@ -319,7 +319,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-hikari-moyomono',
-    name: 'Карп кои (Хикари-моёмоно)',
+    name: 'Koi Carp (Hikari Moyomono)',
     rarity: 'mythic',
     meanWeightKg: 2.9,
     weightVarianceKg: 1.3,
@@ -329,7 +329,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-goshiki',
-    name: 'Карп кои (Госики)',
+    name: 'Koi Carp (Goshiki)',
     rarity: 'mythic',
     meanWeightKg: 2.8,
     weightVarianceKg: 1.3,
@@ -339,7 +339,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-kumonryu',
-    name: 'Карп кои (Кумонрю)',
+    name: 'Koi Carp (Kumonryu)',
     rarity: 'mythic',
     meanWeightKg: 2.5,
     weightVarianceKg: 1.1,
@@ -349,7 +349,7 @@ export const fishCatalog: FishDefinition[] = [
   },
   {
     id: 'koi-doitsu',
-    name: 'Карп кои (Дойцу-гои)',
+    name: 'Koi Carp (Doitsu-goi)',
     rarity: 'mythic',
     meanWeightKg: 2.6,
     weightVarianceKg: 1.1,
@@ -362,8 +362,8 @@ export const fishCatalog: FishDefinition[] = [
 export const baitCatalog: BaitDefinition[] = [
   {
     id: 'fresh-peaceful',
-    name: 'Пресная мирная',
-    displayName: 'Зерновая крошка',
+    name: 'Fresh Peaceful',
+    displayName: 'Grain Crumble',
     water: 'fresh',
     isPredator: false,
     rarityBonus: 0,
@@ -371,8 +371,8 @@ export const baitCatalog: BaitDefinition[] = [
   },
   {
     id: 'fresh-predator',
-    name: 'Пресная хищная',
-    displayName: 'Ручейный малек',
+    name: 'Fresh Predator',
+    displayName: 'Brook Minnow',
     water: 'fresh',
     isPredator: true,
     rarityBonus: 0,
@@ -380,8 +380,8 @@ export const baitCatalog: BaitDefinition[] = [
   },
   {
     id: 'salt-peaceful',
-    name: 'Морская мирная',
-    displayName: 'Морская водоросль',
+    name: 'Sea Peaceful',
+    displayName: 'Seaweed Strand',
     water: 'salt',
     isPredator: false,
     rarityBonus: 0,
@@ -389,8 +389,8 @@ export const baitCatalog: BaitDefinition[] = [
   },
   {
     id: 'salt-predator',
-    name: 'Морская хищная',
-    displayName: 'Кольца кальмара',
+    name: 'Sea Predator',
+    displayName: 'Squid Rings',
     water: 'salt',
     isPredator: true,
     rarityBonus: 0,
@@ -401,8 +401,8 @@ export const baitCatalog: BaitDefinition[] = [
 export const locationCatalog: LocationDefinition[] = [
   {
     id: 'pond',
-    name: 'Пруд',
-    description: 'Стартовая локация RiverKing с пресной рыбой и редкими кои.',
+    name: 'Pond',
+    description: 'The starter RiverKing location with freshwater fish and rare koi.',
     unlockLevel: 1,
     sizeMultiplier: 1,
     image: '/riverking/backgrounds/pond.webp',
@@ -449,7 +449,7 @@ export const locationCatalog: LocationDefinition[] = [
 export const rodCatalog: RodDefinition[] = [
   {
     id: 'spark',
-    name: 'Искра',
+    name: 'Spark',
     power: 1,
     unlockLevel: 1,
   },

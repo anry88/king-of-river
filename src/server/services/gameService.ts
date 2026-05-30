@@ -70,14 +70,14 @@ export const createGameService = (
     hook: async () => {
       const profile = await loadProfile();
       const result = hookCast(profile, Date.now());
-      return saveSnapshot(result.profile, result.hooked ? '' : 'Рыба сорвалась.');
+      return saveSnapshot(result.profile, result.hooked ? '' : 'The fish got away.');
     },
     finishCast: async (taps) => {
       const profile = await loadProfile();
       const result = finishCast(profile, taps, Date.now());
       const message = result.success
-        ? `Поймана рыба: ${result.catchRecord?.fishName ?? 'улов'}.`
-        : 'Рыба сорвалась.';
+        ? `Caught: ${result.catchRecord?.fishName ?? 'fish'}.`
+        : 'The fish got away.';
       return saveSnapshot(result.profile, message);
     },
     selectLocation: async (locationId) => {
