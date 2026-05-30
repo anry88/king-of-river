@@ -26,6 +26,7 @@ type SetupBarProps = {
 type FishingStageProps = {
   activeCast: ActiveCast | null;
   actionPending: boolean;
+  tapCount: number;
   selectedBait: BaitDefinition | null;
   caughtFish: FishDefinition | null;
   lastCatch: CatchRecord | null;
@@ -41,6 +42,7 @@ type FishingStageProps = {
 type ActionControlsProps = {
   activeCast: ActiveCast | null;
   actionPending: boolean;
+  tapCount: number;
   now: number;
   onStartCast: () => void;
   onHook: () => void;
@@ -137,8 +139,10 @@ const useCastClock = (activeCast: ActiveCast | null): number => {
       return undefined;
     }
 
-    const nextTickAt = now < activeCast.hookReadyAt ? activeCast.hookReadyAt : activeCast.hookExpiresAt;
-    const timeoutMs = Math.max(80, nextTickAt - Date.now() + 20);
+    const currentTime = Date.now();
+    const biteVisible = currentTime >= activeCast.hookReadyAt && currentTime <= activeCast.hookExpiresAt;
+    const nextTickAt = currentTime < activeCast.hookReadyAt ? activeCast.hookReadyAt : activeCast.hookExpiresAt;
+    const timeoutMs = biteVisible ? 110 : Math.max(80, nextTickAt - currentTime + 20);
     const timeoutId = window.setTimeout(() => {
       setNow(Date.now());
     }, timeoutMs);
@@ -185,7 +189,11 @@ const useStageSize = (stageRef: RefObject<HTMLDivElement | null>): StageSize => 
   return size;
 };
 
-const buildRodGeometry = (size: StageSize, activeCast: ActiveCast | null): RodGeometry => {
+const buildRodGeometry = (
+  size: StageSize,
+  activeCast: ActiveCast | null,
+  now: number
+): RodGeometry => {
   const { w, h } = size;
   if (w <= 0 || h <= 0) {
     return {
@@ -211,7 +219,16 @@ const buildRodGeometry = (size: StageSize, activeCast: ActiveCast | null): RodGe
   const rodH = rodImageSize.height * rodScale;
   const rodLeft = w * rodBaseXFraction - rodW * rodBaseAnchor.x;
   const rodTop = h - rodH - h * 0.28;
-  const bobberCenter = activeCast
+  const biteVisible =
+    activeCast?.stage === 'casting' && now >= activeCast.hookReadyAt && now <= activeCast.hookExpiresAt;
+  const biteElapsedSeconds = biteVisible ? (now - activeCast.hookReadyAt) / 1000 : 0;
+  const biteOffset = {
+    x: biteVisible ? Math.sin(biteElapsedSeconds * Math.PI * 8) * 1.4 : 0,
+    y: biteVisible
+      ? Math.sin(biteElapsedSeconds * Math.PI * 7) * 4 + Math.max(0, Math.sin(biteElapsedSeconds * Math.PI * 3)) * 3
+      : 0,
+  };
+  const baseBobberCenter = activeCast
     ? {
         x: Math.min(0.88, Math.max(0.05, activeCast.castX)) * w,
         y: Math.min(0.9, Math.max(0.42, activeCast.castY)) * h,
@@ -220,6 +237,10 @@ const buildRodGeometry = (size: StageSize, activeCast: ActiveCast | null): RodGe
         x: shorePosition.x * w,
         y: shorePosition.y * h,
       };
+  const bobberCenter = {
+    x: baseBobberCenter.x + biteOffset.x,
+    y: baseBobberCenter.y + biteOffset.y,
+  };
   const lineAttach = {
     x: bobberCenter.x,
     y: activeCast ? bobberCenter.y - Math.round(bobberRadius * 0.28) : bobberCenter.y,
@@ -307,6 +328,7 @@ export const App = () => {
     snapshot,
     loadState,
     actionPending,
+    tapCount,
     errorMessage,
     startCast,
     hook,
@@ -354,6 +376,7 @@ export const App = () => {
         <FishingStage
           activeCast={activeCast}
           actionPending={actionPending}
+          tapCount={tapCount}
           selectedBait={selectedBait}
           caughtFish={caughtFish}
           lastCatch={lastCatch}
@@ -466,6 +489,7 @@ const SetupBar = ({
 const FishingStage = ({
   activeCast,
   actionPending,
+  tapCount,
   selectedBait,
   caughtFish,
   lastCatch,
@@ -485,8 +509,8 @@ const FishingStage = ({
   const stageSize = useStageSize(stageRef);
 
   const rodGeometry = useMemo(
-    () => buildRodGeometry(stageSize, activeCast),
-    [activeCast, stageSize]
+    () => buildRodGeometry(stageSize, activeCast, now),
+    [activeCast, now, stageSize]
   );
   const biteReady = activeCast?.stage === 'casting' && now >= activeCast.hookReadyAt;
   const rigStateClass =
@@ -561,7 +585,7 @@ const FishingStage = ({
                 <img className="bobber-img" src="/riverking/menu/bobber.webp" alt="" />
               </div>
 
-              {!activeCast ? (
+              {activeCast?.stage !== 'hooked' ? (
                 <div className="rig-node" style={rodGeometry.rigStyle}>
                   <span className="rig-drop-line" />
                   <svg className="hook-icon" viewBox="0 0 28 28">
@@ -589,6 +613,7 @@ const FishingStage = ({
         <ActionControls
           activeCast={activeCast}
           actionPending={actionPending}
+          tapCount={tapCount}
           now={now}
           onStartCast={onStartCast}
           onHook={onHook}
@@ -622,6 +647,7 @@ const CatchFlight = ({
 const ActionControls = ({
   activeCast,
   actionPending,
+  tapCount,
   now,
   onStartCast,
   onHook,
@@ -651,7 +677,13 @@ const ActionControls = ({
   }
 
   return (
-    <button className="cast-action cast-action-pull" disabled={actionPending} onClick={onPull} type="button">
+    <button
+      className={`cast-action cast-action-pull ${tapCount > 0 ? 'cast-action-pull-feedback' : ''}`}
+      disabled={actionPending}
+      key={`${activeCast.id}-${tapCount}`}
+      onClick={onPull}
+      type="button"
+    >
       Pull
     </button>
   );
