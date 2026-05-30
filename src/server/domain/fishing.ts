@@ -20,6 +20,7 @@ import type {
 } from '../../shared/game/types';
 
 const maxRecentCatches = 12;
+const hookWindowMs = 5000;
 
 const rarityReward: Record<Rarity, { coins: number; xp: number }> = {
   common: { coins: 4, xp: 5 },
@@ -33,6 +34,11 @@ const rarityReward: Record<Rarity, { coins: number; xp: number }> = {
 type WeightedFish = {
   fish: FishDefinition;
   weight: number;
+};
+
+export type HookCastResult = {
+  profile: GameProfile;
+  hooked: boolean;
 };
 
 export class GameRuleError extends Error {
@@ -84,6 +90,7 @@ export const startCast = (profile: GameProfile, now: number): GameProfile => {
       baitId: bait.id,
       stage: 'casting',
       startedAt: now,
+      hookExpiresAt: now + hookWindowMs,
       hookedFish: null,
       challenge: null,
       expiresAt: null,
@@ -92,24 +99,58 @@ export const startCast = (profile: GameProfile, now: number): GameProfile => {
   };
 };
 
-export const hookCast = (profile: GameProfile, now: number): GameProfile => {
+export const expireActiveCast = (profile: GameProfile, now: number): GameProfile => {
+  const activeCast = profile.activeCast;
+  if (!activeCast) return profile;
+
+  const castingExpired = activeCast.stage === 'casting' && now > activeCast.hookExpiresAt;
+  const hookedExpired =
+    activeCast.stage === 'hooked' && activeCast.expiresAt !== null && now > activeCast.expiresAt;
+
+  if (!castingExpired && !hookedExpired) {
+    return profile;
+  }
+
+  return {
+    ...profile,
+    activeCast: null,
+    updatedAt: now,
+  };
+};
+
+export const hookCast = (profile: GameProfile, now: number): HookCastResult => {
   const activeCast = requireActiveCast(profile.activeCast, 'casting');
   const location = requireUnlockedLocation(profile, activeCast.locationId);
   const bait = requireBait(activeCast.baitId);
   const fish = pickFish(location, bait);
+
+  if (now > activeCast.hookExpiresAt || !isHookSuccessful(location, activeCast.startedAt, now)) {
+    return {
+      profile: {
+        ...profile,
+        activeCast: null,
+        updatedAt: now,
+      },
+      hooked: false,
+    };
+  }
+
   const hookedFish = createHookedFish(fish, location);
   const challenge = createChallenge(hookedFish);
 
   return {
-    ...profile,
-    activeCast: {
-      ...activeCast,
-      stage: 'hooked',
-      hookedFish,
-      challenge,
-      expiresAt: now + challenge.durationMs,
+    profile: {
+      ...profile,
+      activeCast: {
+        ...activeCast,
+        stage: 'hooked',
+        hookedFish,
+        challenge,
+        expiresAt: now + challenge.durationMs,
+      },
+      updatedAt: now,
     },
-    updatedAt: now,
+    hooked: true,
   };
 };
 
@@ -261,6 +302,25 @@ const pickFish = (location: LocationDefinition, bait: BaitDefinition): FishDefin
   }
 
   return firstEntry.fish;
+};
+
+const isHookSuccessful = (
+  location: LocationDefinition,
+  startedAt: number,
+  now: number
+): boolean => {
+  const reactionSeconds = Math.max(0, (now - startedAt) / 1000);
+  if (reactionSeconds >= 5) return false;
+
+  const catchChance =
+    (1 - baseEscapeChance(location)) * Math.min(1, Math.max(0, 1 - reactionSeconds / 5));
+
+  return Math.random() <= catchChance;
+};
+
+const baseEscapeChance = (location: LocationDefinition): number => {
+  const tier = location.id === defaultLocationId ? 0 : 1;
+  return Math.min(0.5, 0.05 * tier);
 };
 
 const isWeightedFish = (value: WeightedFish | null): value is WeightedFish => {

@@ -2,6 +2,7 @@ import { gameCatalog } from '../../shared/game/catalog';
 import type { GameSnapshot } from '../../shared/game/types';
 import {
   createInitialProfile,
+  expireActiveCast,
   finishCast,
   hookCast,
   selectBait,
@@ -26,7 +27,13 @@ export const createGameService = (
   const loadProfile = async () => {
     const now = Date.now();
     const profile = await repository.loadProfile(identity);
-    if (profile) return profile;
+    if (profile) {
+      const normalizedProfile = expireActiveCast(profile, now);
+      if (normalizedProfile !== profile) {
+        await repository.saveProfile(normalizedProfile);
+      }
+      return normalizedProfile;
+    }
 
     const createdProfile = createInitialProfile(identity.postId, identity.username, now);
     await repository.saveProfile(createdProfile);
@@ -52,17 +59,18 @@ export const createGameService = (
       return {
         profile,
         catalog: gameCatalog,
-        message: 'Можно рыбачить.',
+        message: '',
         lastCatch: profile.catches[0] ?? null,
       };
     },
     startCast: async () => {
       const profile = await loadProfile();
-      return saveSnapshot(startCast(profile, Date.now()), 'Поплавок на воде.');
+      return saveSnapshot(startCast(profile, Date.now()), '');
     },
     hook: async () => {
       const profile = await loadProfile();
-      return saveSnapshot(hookCast(profile, Date.now()), 'Рыба на крючке.');
+      const result = hookCast(profile, Date.now());
+      return saveSnapshot(result.profile, result.hooked ? '' : 'Рыба сорвалась.');
     },
     finishCast: async (taps) => {
       const profile = await loadProfile();
@@ -74,11 +82,11 @@ export const createGameService = (
     },
     selectLocation: async (locationId) => {
       const profile = await loadProfile();
-      return saveSnapshot(selectLocation(profile, locationId, Date.now()), 'Локация выбрана.');
+      return saveSnapshot(selectLocation(profile, locationId, Date.now()), '');
     },
     selectBait: async (baitId) => {
       const profile = await loadProfile();
-      return saveSnapshot(selectBait(profile, baitId, Date.now()), 'Приманка выбрана.');
+      return saveSnapshot(selectBait(profile, baitId, Date.now()), '');
     },
   };
 };

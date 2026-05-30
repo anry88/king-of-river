@@ -10,7 +10,7 @@ The first Reddit version focuses on a short-session fishing loop:
 - expand the custom post into the game iframe
 - cast at a location
 - hook a fish
-- complete a tap challenge
+- pull through a hidden tap challenge before the fish escapes
 - save coins, XP, discoveries, and recent catches
 
 The architecture leaves explicit room for the RiverKing systems that make sense on Reddit:
@@ -27,11 +27,11 @@ The architecture leaves explicit room for the RiverKing systems that make sense 
 The loop is deliberately small:
 
 1. `Cast`: the player starts a cast in the current location.
-2. `Hook`: the backend chooses a fish from the location pool and returns a challenge.
-3. `Land`: the player taps enough times before the challenge expires.
+2. `Hook`: the backend chooses a fish from the location pool and can fail the hook if the player reacts too late.
+3. `Land`: the player taps one pull button enough times before the hidden challenge expires.
 4. `Progress`: the backend records the catch, coins, XP, and discoveries.
 
-This keeps the Reddit game fast while preserving the same staged shape as RiverKing: cast, hook, revealed fish, dynamic landing challenge, catch presentation.
+This keeps the Reddit game fast while preserving the same staged shape as RiverKing: cast, hook, hidden dynamic landing challenge, catch or escape presentation.
 
 ## Reddit Operating Model
 

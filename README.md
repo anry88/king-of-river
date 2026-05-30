@@ -29,7 +29,7 @@ Source inspiration:
 - Service orchestration in `src/server/services/gameService.ts`.
 - Redis persistence in `src/server/storage/gameRepository.ts`.
 - Shared game catalog and DTOs in `src/shared/game/`.
-- First playable screen with `Пруд`, four base baits, original RiverKing location/fish/menu assets, and bottom tab placeholders.
+- First playable screen with `Пруд`, a compact bait picker for four base baits, original RiverKing location/fish/menu assets, and bottom tab placeholders.
 - Moderator menu action to create a custom King of River post.
 - Documentation map matching the original RiverKing repository style.
 
@@ -57,10 +57,10 @@ flowchart LR
 
 1. Open the inline post card.
 2. Expand into the game.
-3. Choose the current location and bait.
+3. Choose the current location and bait from the top controls.
 4. Cast a line at the current location.
-5. Hook a fish and reveal rarity, weight, and a tap challenge.
-6. Land or lose the fish.
+5. Hook a fish before the hook window expires.
+6. Pull with a hidden tap goal before the fish escapes.
 7. Save coins, XP, discoveries, and recent catches in Redis.
 
 ## Commands

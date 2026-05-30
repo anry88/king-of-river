@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { trpc } from '../trpcClient';
 import type { GameSnapshot } from '../../shared/game/types';
 
@@ -13,6 +13,8 @@ type UseGameState = {
 };
 
 const requestTimeoutMs = 10000;
+
+const escapedMessage = 'Рыба сорвалась.';
 
 const withTimeout = async <T,>(promise: Promise<T>, label: string): Promise<T> => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
@@ -40,6 +42,12 @@ export const useGame = () => {
     tapCount: 0,
     errorMessage: null,
   });
+  const stateRef = useRef(state);
+  const tapCountRef = useRef(0);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   const runAction = useCallback(
     async (action: () => Promise<GameSnapshot>, resetTaps: boolean) => {
@@ -51,6 +59,9 @@ export const useGame = () => {
 
       try {
         const snapshot = await withTimeout(action(), 'Game action');
+        if (resetTaps) {
+          tapCountRef.current = 0;
+        }
         setState((current) => ({
           ...current,
           snapshot,
@@ -82,6 +93,7 @@ export const useGame = () => {
         );
         if (cancelled) return;
 
+        tapCountRef.current = 0;
         setState((current) => ({
           ...current,
           snapshot,
@@ -118,16 +130,6 @@ export const useGame = () => {
     void runAction(() => trpc.game.hook.mutate(), true);
   }, [runAction]);
 
-  const landAction = useCallback(() => {
-    void runAction(
-      () =>
-        trpc.game.finishCast.mutate({
-          taps: state.tapCount,
-        }),
-      true
-    );
-  }, [runAction, state.tapCount]);
-
   const selectLocationAction = useCallback(
     (locationId: string) => {
       void runAction(
@@ -154,20 +156,101 @@ export const useGame = () => {
     [runAction]
   );
 
-  const addTap = useCallback(() => {
+  const pullAction = useCallback(() => {
+    const snapshot = stateRef.current.snapshot;
+    const activeCast = snapshot?.profile.activeCast;
+    const challenge = activeCast?.challenge;
+
+    if (!activeCast || activeCast.stage !== 'hooked' || !challenge) {
+      return;
+    }
+
+    const nextTapCount = tapCountRef.current + 1;
+    tapCountRef.current = nextTapCount;
+
     setState((current) => ({
       ...current,
-      tapCount: current.tapCount + 1,
+      tapCount: nextTapCount,
     }));
+
+    if (nextTapCount >= challenge.tapGoal) {
+      void runAction(
+        () =>
+          trpc.game.finishCast.mutate({
+            taps: nextTapCount,
+          }),
+        true
+      );
+    }
+  }, [runAction]);
+
+  const expireCastLocally = useCallback((castId: string) => {
+    tapCountRef.current = 0;
+
+    setState((current) => {
+      const snapshot = current.snapshot;
+      const activeCast = snapshot?.profile.activeCast;
+      if (!snapshot || activeCast?.id !== castId) {
+        return current;
+      }
+
+      return {
+        ...current,
+        snapshot: {
+          ...snapshot,
+          profile: {
+            ...snapshot.profile,
+            activeCast: null,
+            updatedAt: Date.now(),
+          },
+          message: escapedMessage,
+        },
+        actionPending: false,
+        tapCount: 0,
+        errorMessage: null,
+      };
+    });
   }, []);
+
+  useEffect(() => {
+    const activeCast = state.snapshot?.profile.activeCast;
+    if (!activeCast || state.actionPending) {
+      return undefined;
+    }
+
+    if (activeCast.stage === 'casting') {
+      const timeoutMs = Math.max(0, activeCast.hookExpiresAt - Date.now() + 40);
+      const timeoutId = setTimeout(() => {
+        const currentActiveCast = stateRef.current.snapshot?.profile.activeCast;
+        if (currentActiveCast?.id === activeCast.id && currentActiveCast.stage === 'casting') {
+          expireCastLocally(activeCast.id);
+        }
+      }, timeoutMs);
+
+      return () => clearTimeout(timeoutId);
+    }
+
+    if (activeCast.stage === 'hooked' && activeCast.expiresAt) {
+      const timeoutMs = Math.max(0, activeCast.expiresAt - Date.now() + 40);
+      const timeoutId = setTimeout(() => {
+        const currentActiveCast = stateRef.current.snapshot?.profile.activeCast;
+        if (currentActiveCast?.id === activeCast.id && currentActiveCast.stage === 'hooked') {
+          expireCastLocally(activeCast.id);
+        }
+      }, timeoutMs);
+
+      return () => clearTimeout(timeoutId);
+    }
+
+    return undefined;
+  }, [expireCastLocally, state.actionPending, state.snapshot?.profile.activeCast]);
 
   return {
     ...state,
     startCast: startCastAction,
     hook: hookAction,
-    land: landAction,
     selectLocation: selectLocationAction,
     selectBait: selectBaitAction,
-    addTap,
+    pull: pullAction,
   };
 };

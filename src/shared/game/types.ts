@@ -64,6 +64,7 @@ export type ActiveCast = {
   baitId: string;
   stage: 'casting' | 'hooked';
   startedAt: number;
+  hookExpiresAt: number;
   hookedFish: HookedFish | null;
   challenge: HookChallenge | null;
   expiresAt: number | null;
@@ -190,6 +191,7 @@ const isActiveCast = (value: unknown): value is ActiveCast => {
     typeof value.baitId === 'string' &&
     (value.stage === 'casting' || value.stage === 'hooked') &&
     isNumber(value.startedAt) &&
+    isNumber(value.hookExpiresAt) &&
     (value.hookedFish === null || isHookedFish(value.hookedFish)) &&
     (value.challenge === null || isHookChallenge(value.challenge)) &&
     (value.expiresAt === null || isNumber(value.expiresAt))
