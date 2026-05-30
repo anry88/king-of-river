@@ -28,11 +28,26 @@
 
 @layer components {
   .rk-shell {
+    position: relative;
     min-height: 100vh;
     overflow: hidden;
     background:
       radial-gradient(circle at 20% 0%, rgb(230 166 67 / 0.22), transparent 28%),
       linear-gradient(180deg, #11261f 0%, #07120f 100%);
+  }
+
+  .asset-preloads {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .asset-preloads img {
+    width: 1px;
+    height: 1px;
   }
 
   .rk-screen {
@@ -220,6 +235,11 @@
     opacity: 0.62;
   }
 
+  .cast-action:disabled {
+    filter: saturate(0.7) brightness(0.9);
+    opacity: 0.82;
+  }
+
   .stage-wrap {
     min-height: 0;
     flex: 1;
@@ -304,75 +324,116 @@
 
   .stage-rod {
     position: absolute;
-    z-index: 2;
-    right: -38%;
-    bottom: -14%;
-    width: min(122%, 820px);
+    z-index: 3;
     max-width: none;
-    transform: none;
-    transform-origin: 68% 92%;
     filter: drop-shadow(0 22px 28px rgb(0 0 0 / 0.34));
     pointer-events: none;
   }
 
-  .stage-line {
+  .stage-water-line,
+  .stage-rod-line {
     position: absolute;
     inset: 0;
-    z-index: 2;
     width: 100%;
     height: 100%;
+    overflow: visible;
     pointer-events: none;
   }
 
-  .stage-line path {
-    fill: none;
-    stroke: rgb(255 255 255 / 0.48);
-    stroke-linecap: round;
-    stroke-width: 0.35;
+  .stage-water-line {
+    z-index: 2;
   }
 
-  .stage-line .line-active {
-    stroke: rgb(255 247 214 / 0.68);
+  .stage-rod-line {
+    z-index: 4;
+  }
+
+  .stage-water-line path,
+  .stage-rod-line path {
+    fill: none;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  .rod-line {
+    stroke: rgb(255 247 214 / 0.55);
+    stroke-width: 1.1px;
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.5));
+  }
+
+  .water-line {
+    stroke: rgb(255 247 214 / 0.74);
+    stroke-width: 1.15px;
+    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.58));
+  }
+
+  .fishing-rig {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+  }
+
+  .stage-water-line.fishing-rig-active .water-line,
+  .stage-water-line.fishing-rig-hooked .water-line {
     animation: line-pulse 0.72s ease-in-out infinite;
   }
 
   .bobber-node {
     position: absolute;
-    z-index: 3;
-    top: 58%;
-    left: 46%;
-    width: 40px;
-    height: 66px;
-    transform: translate(-50%, -50%);
     pointer-events: none;
   }
 
-  .bobber-node > img:first-child {
-    width: 38px;
-    height: 38px;
+  .bobber-img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
     filter: drop-shadow(0 12px 14px rgb(0 0 0 / 0.45));
   }
 
-  .bobber-node::after {
+  .rig-node {
     position: absolute;
-    top: 36px;
-    left: 19px;
-    width: 1px;
-    height: 28px;
-    background: rgb(255 255 255 / 0.5);
-    content: "";
+    pointer-events: none;
   }
 
-  .bobber-node-active {
+  .rig-drop-line {
+    position: absolute;
+    top: 0;
+    left: 22px;
+    width: 1.2px;
+    height: 36px;
+    background: rgb(255 247 214 / 0.64);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+  }
+
+  .fishing-rig-active .bobber-node,
+  .fishing-rig-hooked .bobber-node {
     animation: bobber-drift 1.15s ease-in-out infinite;
+  }
+
+  .hook-icon {
+    position: absolute;
+    top: 33px;
+    left: 14px;
+    width: 18px;
+    height: 18px;
+    z-index: 4;
+    overflow: visible;
+    fill: none;
+    stroke: rgb(255 247 214 / 0.84);
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.15px;
+    filter: drop-shadow(0 4px 5px rgb(0 0 0 / 0.5));
   }
 
   .bait-on-hook {
     position: absolute;
-    top: 52px;
-    left: 10px;
-    width: 22px;
-    height: 22px;
+    top: 24px;
+    left: 12px;
+    z-index: 5;
+    width: 20px;
+    height: 20px;
     object-fit: contain;
     filter: drop-shadow(0 5px 8px rgb(0 0 0 / 0.44));
   }
@@ -467,22 +528,22 @@
 @keyframes bobber-drift {
   0%,
   100% {
-    transform: translate(-50%, -50%) rotate(-2deg);
+    transform: translateY(0) rotate(-2deg);
   }
 
   50% {
-    transform: translate(calc(-50% + 2px), calc(-50% + 3px)) rotate(2deg);
+    transform: translate(2px, 3px) rotate(2deg);
   }
 }
 
 @keyframes line-pulse {
   0%,
   100% {
-    stroke-width: 0.35;
+    stroke-width: 1.15px;
   }
 
   50% {
-    stroke-width: 0.52;
+    stroke-width: 1.85px;
   }
 }
 

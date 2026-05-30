@@ -1,7 +1,8 @@
 import './index.css';
 
-import { StrictMode, useState } from 'react';
+import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
+import type { RefObject } from 'react';
 import { useGame } from './hooks/useGame';
 import type {
   ActiveCast,
@@ -36,6 +37,7 @@ type FishingStageProps = {
 type ActionControlsProps = {
   activeCast: ActiveCast | null;
   actionPending: boolean;
+  now: number;
   onStartCast: () => void;
   onHook: () => void;
   onPull: () => void;
@@ -46,12 +48,248 @@ type StatPillProps = {
   value: string;
 };
 
+type StageSize = {
+  w: number;
+  h: number;
+};
+
+type Point = {
+  x: number;
+  y: number;
+};
+
+type RodGeometry = {
+  ready: boolean;
+  rodStyle: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+  rodLinePath: string;
+  waterLinePath: string;
+  bobberStyle: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+  rigStyle: {
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  };
+};
+
 const bottomTabs = [
   { id: 'fishing', label: 'Fishing', icon: '/riverking/menu/fishing.webp', active: true },
   { id: 'ratings', label: 'Ratings', icon: '/riverking/menu/ratings.webp', active: false },
   { id: 'catalog', label: 'Catalog', icon: '/riverking/menu/guide.webp', active: false },
   { id: 'shop', label: 'Shop', icon: '/riverking/menu/shop.webp', active: false },
 ];
+
+const assetPreloadImages = [
+  '/riverking/backgrounds/pond.webp',
+  '/riverking/baits/grain_crumble.webp',
+  '/riverking/baits/brook_minnow.webp',
+  '/riverking/baits/seaweed_strand.webp',
+  '/riverking/baits/squid_rings.webp',
+];
+
+const bobberSize = 30;
+const bobberRadius = bobberSize / 2;
+const rigLineHeight = 36;
+const hookSize = 18;
+const rigWidth = 44;
+const rigCenterX = rigWidth / 2;
+const shorePosition = { x: 0.44, y: 0.56 };
+const rodImageSize = { width: 1536, height: 1024 };
+const rodTipAnchor = { x: 0.07878, y: 0.04785 };
+const rodBaseAnchor = { x: 0.383, y: 0.998 };
+const rodSizeMultiplier = 1.5;
+const rodBaseXFraction = 2 / 3;
+const rodLinePoints = [
+  { x: 0.765, y: 0.98 },
+  { x: 0.635, y: 0.8 },
+  { x: 0.495, y: 0.61 },
+  { x: 0.355, y: 0.42 },
+  { x: 0.215, y: 0.23 },
+  { x: 0.078, y: 0.048 },
+];
+
+const useCastClock = (activeCast: ActiveCast | null): number => {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!activeCast || activeCast.stage !== 'casting') {
+      return undefined;
+    }
+
+    const nextTickAt = now < activeCast.hookReadyAt ? activeCast.hookReadyAt : activeCast.hookExpiresAt;
+    const timeoutMs = Math.max(80, nextTickAt - Date.now() + 20);
+    const timeoutId = window.setTimeout(() => {
+      setNow(Date.now());
+    }, timeoutMs);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeCast, now]);
+
+  return now;
+};
+
+const useStageSize = (stageRef: RefObject<HTMLDivElement | null>): StageSize => {
+  const [size, setSize] = useState<StageSize>({ w: 0, h: 0 });
+
+  useEffect(() => {
+    const element = stageRef.current;
+    if (!element) {
+      return undefined;
+    }
+
+    const updateSize = () => {
+      const rect = element.getBoundingClientRect();
+      const nextSize = {
+        w: Math.max(0, rect.width),
+        h: Math.max(0, rect.height),
+      };
+
+      setSize((current) => {
+        if (Math.abs(current.w - nextSize.w) < 0.5 && Math.abs(current.h - nextSize.h) < 0.5) {
+          return current;
+        }
+
+        return nextSize;
+      });
+    };
+
+    updateSize();
+
+    const resizeObserver = new ResizeObserver(updateSize);
+    resizeObserver.observe(element);
+
+    return () => resizeObserver.disconnect();
+  }, [stageRef]);
+
+  return size;
+};
+
+const buildRodGeometry = (size: StageSize, activeCast: ActiveCast | null): RodGeometry => {
+  const { w, h } = size;
+  if (w <= 0 || h <= 0) {
+    return {
+      ready: false,
+      rodStyle: { left: 0, top: 0, width: 0, height: 0 },
+      rodLinePath: '',
+      waterLinePath: '',
+      bobberStyle: { left: 0, top: 0, width: 0, height: 0 },
+      rigStyle: { left: 0, top: 0, width: 0, height: 0 },
+    };
+  }
+
+  const isSmall = w < 420;
+  const isTablet = w >= 420 && w < 1024;
+  const targetWFrac = isSmall ? 0.7 : isTablet ? 0.55 : 0.48;
+  const targetHFrac = isSmall ? 0.92 : isTablet ? 0.9 : 0.86;
+  const rodScaleBase = Math.min(
+    (w * targetWFrac) / rodImageSize.width,
+    (h * targetHFrac) / rodImageSize.height
+  );
+  const rodScale = rodScaleBase * rodSizeMultiplier;
+  const rodW = rodImageSize.width * rodScale;
+  const rodH = rodImageSize.height * rodScale;
+  const rodLeft = w * rodBaseXFraction - rodW * rodBaseAnchor.x;
+  const rodTop = h - rodH - h * 0.28;
+  const bobberCenter = activeCast
+    ? {
+        x: Math.min(0.88, Math.max(0.05, activeCast.castX)) * w,
+        y: Math.min(0.9, Math.max(0.42, activeCast.castY)) * h,
+      }
+    : {
+        x: shorePosition.x * w,
+        y: shorePosition.y * h,
+      };
+  const lineAttach = {
+    x: bobberCenter.x,
+    y: activeCast ? bobberCenter.y - Math.round(bobberRadius * 0.28) : bobberCenter.y,
+  };
+  const tip = {
+    x: rodLeft + rodW * rodTipAnchor.x,
+    y: rodTop + rodH * rodTipAnchor.y,
+  };
+  const rodPointsPx = rodLinePoints.map((point) => ({
+    x: rodLeft + rodW * point.x,
+    y: rodTop + rodH * point.y,
+  }));
+  const fallbackLastPoint = tip;
+  const firstRodPoint = rodPointsPx[0];
+  const lastRodPoint = rodPointsPx[rodPointsPx.length - 1] ?? fallbackLastPoint;
+  const rodLinePath = firstRodPoint
+    ? rodPointsPx
+        .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x},${point.y}`)
+        .join(' ')
+    : '';
+  const dx = lineAttach.x - lastRodPoint.x;
+  const dy = lineAttach.y - lastRodPoint.y;
+  const dist = Math.hypot(dx, dy);
+  const shouldShowSlack = !activeCast;
+  const waterLinePath = shouldShowSlack
+    ? buildSlackLine(lastRodPoint, lineAttach, dist, h)
+    : buildTautLine(lastRodPoint, lineAttach, dist, h);
+
+  return {
+    ready: true,
+    rodStyle: {
+      left: rodLeft,
+      top: rodTop,
+      width: rodW,
+      height: rodH,
+    },
+    rodLinePath,
+    waterLinePath,
+    bobberStyle: {
+      left: bobberCenter.x - bobberRadius,
+      top: bobberCenter.y - bobberRadius,
+      width: bobberSize,
+      height: bobberSize,
+    },
+    rigStyle: {
+      left: bobberCenter.x - rigCenterX,
+      top: bobberCenter.y + bobberRadius * 0.44,
+      width: rigWidth,
+      height: rigLineHeight + hookSize + 4,
+    },
+  };
+};
+
+const buildSlackLine = (from: Point, to: Point, dist: number, stageHeight: number): string => {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const sag = Math.min(stageHeight * 0.06, Math.max(8, dist * 0.2));
+  const baseMidY = from.y + dy * 0.5;
+  const control1 = {
+    x: from.x + dx * 0.35,
+    y: baseMidY + sag * 0.45,
+  };
+  const control2 = {
+    x: from.x + dx * 0.75,
+    y: baseMidY + sag,
+  };
+
+  return `M ${from.x},${from.y} C ${control1.x},${control1.y} ${control2.x},${control2.y} ${to.x},${to.y}`;
+};
+
+const buildTautLine = (from: Point, to: Point, dist: number, stageHeight: number): string => {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const gentleSag = Math.min(stageHeight * 0.08, dist * 0.12);
+  const control = {
+    x: from.x + dx * 0.5,
+    y: from.y + dy * 0.5 + gentleSag,
+  };
+
+  return `M ${from.x},${from.y} Q ${control.x},${control.y} ${to.x},${to.y}`;
+};
 
 export const App = () => {
   const {
@@ -87,6 +325,7 @@ export const App = () => {
 
   return (
     <main className="rk-shell">
+      <AssetPreloads />
       <section className="rk-screen">
         <SetupBar
           baits={catalog.baits}
@@ -114,6 +353,16 @@ export const App = () => {
         <BottomTabs />
       </section>
     </main>
+  );
+};
+
+const AssetPreloads = () => {
+  return (
+    <div className="asset-preloads" aria-hidden="true">
+      {assetPreloadImages.map((src) => (
+        <img key={src} src={src} alt="" />
+      ))}
+    </div>
   );
 };
 
@@ -213,11 +462,25 @@ const FishingStage = ({
   const backgroundImage = selectedLocation?.image ?? '/riverking/backgrounds/pond.webp';
   const outcomeMessage = errorMessage ?? message;
   const outcomeKey = `${profile.updatedAt}-${outcomeMessage}`;
+  const now = useCastClock(activeCast);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const stageSize = useStageSize(stageRef);
+  const rodGeometry = useMemo(
+    () => buildRodGeometry(stageSize, activeCast),
+    [activeCast, stageSize]
+  );
+  const rigStateClass =
+    activeCast?.stage === 'hooked'
+      ? 'fishing-rig-hooked'
+      : activeCast
+        ? 'fishing-rig-active'
+        : 'fishing-rig-idle';
 
   return (
     <section className="stage-wrap">
       <div
         className="pond-stage"
+        ref={stageRef}
         style={{
           backgroundImage: `url(${backgroundImage})`,
         }}
@@ -237,17 +500,49 @@ const FishingStage = ({
           </div>
         </div>
 
-        <img className="stage-rod" src="/riverking/rods/yellow_rod.webp" alt="" />
-
-        {activeCast ? (
+        {rodGeometry.ready ? (
           <>
-            <svg className="stage-line" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <path className="line-active" d="M 25 50 C 30 56, 38 59, 46 58" />
+            <svg
+              className={`stage-water-line ${rigStateClass}`}
+              height={stageSize.h}
+              viewBox={`0 0 ${stageSize.w} ${stageSize.h}`}
+              width={stageSize.w}
+            >
+              <path className="water-line" d={rodGeometry.waterLinePath} />
             </svg>
 
-            <div className="bobber-node bobber-node-active">
-              <img src="/riverking/bobber.svg" alt="" />
-              {selectedBait ? <img className="bait-on-hook" src={selectedBait.image} alt="" /> : null}
+            <img
+              className="stage-rod"
+              src="/riverking/rods/yellow_rod.webp"
+              style={rodGeometry.rodStyle}
+              alt=""
+            />
+
+            <svg
+              className="stage-rod-line"
+              height={stageSize.h}
+              viewBox={`0 0 ${stageSize.w} ${stageSize.h}`}
+              width={stageSize.w}
+            >
+              <path className="rod-line" d={rodGeometry.rodLinePath} />
+            </svg>
+
+            <div className={`fishing-rig ${rigStateClass}`} aria-hidden="true">
+              <div className="bobber-node" style={rodGeometry.bobberStyle}>
+                <img className="bobber-img" src="/riverking/menu/bobber.webp" alt="" />
+              </div>
+
+              {!activeCast ? (
+                <div className="rig-node" style={rodGeometry.rigStyle}>
+                  <span className="rig-drop-line" />
+                  <svg className="hook-icon" viewBox="0 0 28 28">
+                    <path d="M15.8 3.4C14 6.9 14.2 10.7 16.2 13.8L19.5 19C20.8 21.1 20 23.9 17.7 25.1C15.5 26.2 12.7 25.3 11.6 23C11.1 22 11 20.9 11.3 19.9" />
+                    <path d="M10.1 20.2L6.4 18" />
+                    <path d="M15.2 3.9L19 2.2" />
+                  </svg>
+                  {selectedBait ? <img className="bait-on-hook" src={selectedBait.image} alt="" /> : null}
+                </div>
+              ) : null}
             </div>
           </>
         ) : null}
@@ -255,6 +550,7 @@ const FishingStage = ({
         <ActionControls
           activeCast={activeCast}
           actionPending={actionPending}
+          now={now}
           onStartCast={onStartCast}
           onHook={onHook}
           onPull={onPull}
@@ -267,6 +563,7 @@ const FishingStage = ({
 const ActionControls = ({
   activeCast,
   actionPending,
+  now,
   onStartCast,
   onHook,
   onPull,
@@ -280,9 +577,16 @@ const ActionControls = ({
   }
 
   if (activeCast.stage === 'casting') {
+    const hookReady = now >= activeCast.hookReadyAt;
+
     return (
-      <button className="cast-action" disabled={actionPending} onClick={onHook} type="button">
-        Hook
+      <button
+        className="cast-action"
+        disabled={actionPending || !hookReady}
+        onClick={onHook}
+        type="button"
+      >
+        {hookReady ? 'Hook' : 'Waiting'}
       </button>
     );
   }

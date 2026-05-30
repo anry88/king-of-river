@@ -64,7 +64,11 @@ export type ActiveCast = {
   baitId: string;
   stage: 'casting' | 'hooked';
   startedAt: number;
+  hookReadyAt: number;
   hookExpiresAt: number;
+  waitSeconds: number;
+  castX: number;
+  castY: number;
   hookedFish: HookedFish | null;
   challenge: HookChallenge | null;
   expiresAt: number | null;
@@ -191,7 +195,11 @@ const isActiveCast = (value: unknown): value is ActiveCast => {
     typeof value.baitId === 'string' &&
     (value.stage === 'casting' || value.stage === 'hooked') &&
     isNumber(value.startedAt) &&
+    isNumber(value.hookReadyAt) &&
     isNumber(value.hookExpiresAt) &&
+    isNumber(value.waitSeconds) &&
+    isNumber(value.castX) &&
+    isNumber(value.castY) &&
     (value.hookedFish === null || isHookedFish(value.hookedFish)) &&
     (value.challenge === null || isHookChallenge(value.challenge)) &&
     (value.expiresAt === null || isNumber(value.expiresAt))
@@ -204,6 +212,10 @@ export const isGameProfile = (value: unknown): value is GameProfile => {
 
   const dailyReward = value.dailyReward;
   if (!isRecord(dailyReward)) return false;
+
+  if (value.activeCast !== null && !isActiveCast(value.activeCast)) {
+    value.activeCast = null;
+  }
 
   return (
     typeof value.postId === 'string' &&

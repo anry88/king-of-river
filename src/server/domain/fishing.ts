@@ -20,7 +20,15 @@ import type {
 } from '../../shared/game/types';
 
 const maxRecentCatches = 12;
-const hookWindowMs = 5000;
+const biteMinWaitSeconds = 5;
+const biteMaxWaitSeconds = 30;
+const reactionWindowMs = 5000;
+const pondCastArea = {
+  minX: 0.08,
+  maxX: 0.72,
+  farY: 0.46,
+  nearY: 0.66,
+};
 
 const rarityReward: Record<Rarity, { coins: number; xp: number }> = {
   common: { coins: 4, xp: 5 },
@@ -81,6 +89,9 @@ export const startCast = (profile: GameProfile, now: number): GameProfile => {
 
   const location = requireUnlockedLocation(profile, profile.currentLocationId);
   const bait = requireBait(profile.currentBaitId);
+  const waitSeconds = nextBiteWaitSeconds();
+  const hookReadyAt = now + waitSeconds * 1000;
+  const castSpot = nextCastSpot();
 
   return {
     ...profile,
@@ -90,7 +101,11 @@ export const startCast = (profile: GameProfile, now: number): GameProfile => {
       baitId: bait.id,
       stage: 'casting',
       startedAt: now,
-      hookExpiresAt: now + hookWindowMs,
+      hookReadyAt,
+      hookExpiresAt: hookReadyAt + reactionWindowMs,
+      waitSeconds,
+      castX: castSpot.x,
+      castY: castSpot.y,
       hookedFish: null,
       challenge: null,
       expiresAt: null,
@@ -122,9 +137,14 @@ export const hookCast = (profile: GameProfile, now: number): HookCastResult => {
   const activeCast = requireActiveCast(profile.activeCast, 'casting');
   const location = requireUnlockedLocation(profile, activeCast.locationId);
   const bait = requireBait(activeCast.baitId);
-  const fish = pickFish(location, bait);
 
-  if (now > activeCast.hookExpiresAt || !isHookSuccessful(location, activeCast.startedAt, now)) {
+  if (now < activeCast.hookReadyAt) {
+    throw new GameRuleError('No bite yet.');
+  }
+
+  const reactionSeconds = Math.max(0, (now - activeCast.hookReadyAt) / 1000);
+
+  if (now > activeCast.hookExpiresAt || !isHookSuccessful(location, reactionSeconds)) {
     return {
       profile: {
         ...profile,
@@ -135,6 +155,7 @@ export const hookCast = (profile: GameProfile, now: number): HookCastResult => {
     };
   }
 
+  const fish = pickFish(location, bait, activeCast.waitSeconds);
   const hookedFish = createHookedFish(fish, location);
   const challenge = createChallenge(hookedFish);
 
@@ -268,7 +289,12 @@ const requireActiveCast = (
   return activeCast;
 };
 
-const pickFish = (location: LocationDefinition, bait: BaitDefinition): FishDefinition => {
+const pickFish = (
+  location: LocationDefinition,
+  bait: BaitDefinition,
+  waitSeconds: number
+): FishDefinition => {
+  const rarityFactor = biteRarityFactor(waitSeconds, bait.rarityBonus);
   const pool = location.fishWeights
     .map((entry) => {
       const fish = findFish(entry.fishId);
@@ -276,11 +302,10 @@ const pickFish = (location: LocationDefinition, bait: BaitDefinition): FishDefin
 
       const predatorFactor = fish.isPredator === bait.isPredator ? 1 : 0.18;
       const waterFactor = fish.water === bait.water ? 1 : 0.65;
-      const rarityFactor = rarityModifier(fish.rarity, bait.rarityBonus);
 
       return {
         fish,
-        weight: entry.weight * predatorFactor * waterFactor * rarityFactor,
+        weight: entry.weight * predatorFactor * waterFactor * rarityModifier(fish.rarity, rarityFactor),
       };
     })
     .filter(isWeightedFish);
@@ -304,12 +329,7 @@ const pickFish = (location: LocationDefinition, bait: BaitDefinition): FishDefin
   return firstEntry.fish;
 };
 
-const isHookSuccessful = (
-  location: LocationDefinition,
-  startedAt: number,
-  now: number
-): boolean => {
-  const reactionSeconds = Math.max(0, (now - startedAt) / 1000);
+const isHookSuccessful = (location: LocationDefinition, reactionSeconds: number): boolean => {
   if (reactionSeconds >= 5) return false;
 
   const catchChance =
@@ -321,6 +341,25 @@ const isHookSuccessful = (
 const baseEscapeChance = (location: LocationDefinition): number => {
   const tier = location.id === defaultLocationId ? 0 : 1;
   return Math.min(0.5, 0.05 * tier);
+};
+
+const nextBiteWaitSeconds = (): number => {
+  const spread = biteMaxWaitSeconds - biteMinWaitSeconds + 1;
+  return biteMinWaitSeconds + Math.floor(Math.random() * spread);
+};
+
+const nextCastSpot = (): { x: number; y: number } => {
+  return {
+    x: pondCastArea.minX + Math.random() * (pondCastArea.maxX - pondCastArea.minX),
+    y: pondCastArea.farY + Math.random() * (pondCastArea.nearY - pondCastArea.farY),
+  };
+};
+
+const biteRarityFactor = (waitSeconds: number, baitRarityBonus: number): number => {
+  const wait = Math.min(biteMaxWaitSeconds, Math.max(biteMinWaitSeconds, waitSeconds));
+  const waitFactor = (wait - biteMinWaitSeconds) / (biteMaxWaitSeconds - biteMinWaitSeconds);
+
+  return Math.min(1, Math.max(0, waitFactor + baitRarityBonus));
 };
 
 const isWeightedFish = (value: WeightedFish | null): value is WeightedFish => {
