@@ -1,0 +1,170 @@
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+
+export type FishDefinition = {
+  id: string;
+  name: string;
+  rarity: Rarity;
+  minWeightKg: number;
+  maxWeightKg: number;
+  baseCoins: number;
+  baseXp: number;
+};
+
+export type LocationFishWeight = {
+  fishId: string;
+  weight: number;
+};
+
+export type LocationDefinition = {
+  id: string;
+  name: string;
+  description: string;
+  unlockLevel: number;
+  fishWeights: LocationFishWeight[];
+};
+
+export type RodDefinition = {
+  id: string;
+  name: string;
+  power: number;
+  unlockLevel: number;
+};
+
+export type HookedFish = {
+  fishId: string;
+  fishName: string;
+  rarity: Rarity;
+  weightKg: number;
+};
+
+export type HookChallenge = {
+  tapGoal: number;
+  durationMs: number;
+  struggleIntensity: number;
+};
+
+export type ActiveCast = {
+  id: string;
+  locationId: string;
+  stage: 'casting' | 'hooked';
+  startedAt: number;
+  hookedFish: HookedFish | null;
+  challenge: HookChallenge | null;
+  expiresAt: number | null;
+};
+
+export type CatchRecord = {
+  id: string;
+  fishId: string;
+  fishName: string;
+  rarity: Rarity;
+  weightKg: number;
+  coins: number;
+  xp: number;
+  caughtAt: number;
+  locationId: string;
+  isNewDiscovery: boolean;
+};
+
+export type DailyRewardState = {
+  lastClaimedAt: number | null;
+  streak: number;
+};
+
+export type GameProfile = {
+  version: 1;
+  postId: string;
+  username: string;
+  coins: number;
+  xp: number;
+  level: number;
+  currentLocationId: string;
+  currentRodId: string;
+  discoveredFishIds: string[];
+  catches: CatchRecord[];
+  activeCast: ActiveCast | null;
+  dailyReward: DailyRewardState;
+  updatedAt: number;
+};
+
+export type GameCatalog = {
+  locations: LocationDefinition[];
+  rods: RodDefinition[];
+  fish: FishDefinition[];
+};
+
+export type GameSnapshot = {
+  profile: GameProfile;
+  catalog: GameCatalog;
+  message: string;
+  lastCatch: CatchRecord | null;
+};
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+};
+
+const isStringArray = (value: unknown): value is string[] => {
+  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+};
+
+const isNumber = (value: unknown): value is number => {
+  return typeof value === 'number' && Number.isFinite(value);
+};
+
+const isCatchRecordArray = (value: unknown): value is CatchRecord[] => {
+  if (!Array.isArray(value)) return false;
+
+  return value.every((item) => {
+    if (!isRecord(item)) return false;
+    return (
+      typeof item.id === 'string' &&
+      typeof item.fishId === 'string' &&
+      typeof item.fishName === 'string' &&
+      typeof item.rarity === 'string' &&
+      isNumber(item.weightKg) &&
+      isNumber(item.coins) &&
+      isNumber(item.xp) &&
+      isNumber(item.caughtAt) &&
+      typeof item.locationId === 'string' &&
+      typeof item.isNewDiscovery === 'boolean'
+    );
+  });
+};
+
+const isActiveCast = (value: unknown): value is ActiveCast => {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.id === 'string' &&
+    typeof value.locationId === 'string' &&
+    (value.stage === 'casting' || value.stage === 'hooked') &&
+    isNumber(value.startedAt) &&
+    (value.hookedFish === null || isRecord(value.hookedFish)) &&
+    (value.challenge === null || isRecord(value.challenge)) &&
+    (value.expiresAt === null || isNumber(value.expiresAt))
+  );
+};
+
+export const isGameProfile = (value: unknown): value is GameProfile => {
+  if (!isRecord(value)) return false;
+  if (value.version !== 1) return false;
+
+  const dailyReward = value.dailyReward;
+  if (!isRecord(dailyReward)) return false;
+
+  return (
+    typeof value.postId === 'string' &&
+    typeof value.username === 'string' &&
+    isNumber(value.coins) &&
+    isNumber(value.xp) &&
+    isNumber(value.level) &&
+    typeof value.currentLocationId === 'string' &&
+    typeof value.currentRodId === 'string' &&
+    isStringArray(value.discoveredFishIds) &&
+    isCatchRecordArray(value.catches) &&
+    (value.activeCast === null || isActiveCast(value.activeCast)) &&
+    (dailyReward.lastClaimedAt === null || isNumber(dailyReward.lastClaimedAt)) &&
+    isNumber(dailyReward.streak) &&
+    isNumber(value.updatedAt)
+  );
+};

@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Devvit / Vite build output
+dist/
+.vite/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs and local data
+*.log
+logs/
+*.db
+coverage/
+
+# OS and editor files
+.DS_Store
+.idea/
+.vscode/
+
+# Temporary files
+*.tmp
+*.swp
+
+# Accidental TypeScript source-adjacent emit
+src/**/*.js
+src/**/*.js.map
+src/**/*.d.ts
+!src/client/module.d.ts
