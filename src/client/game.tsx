@@ -2,7 +2,7 @@ import './index.css';
 
 import { StrictMode, useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import type { RefObject } from 'react';
+import type { CSSProperties, RefObject } from 'react';
 import { useGame } from './hooks/useGame';
 import type {
   ActiveCast,
@@ -71,6 +71,13 @@ type Point = {
   y: number;
 };
 
+type FloatVisual = {
+  offset: number;
+  xOffset: number;
+  tilt: number;
+  submerge: number;
+};
+
 type RodGeometry = {
   ready: boolean;
   rodStyle: {
@@ -81,6 +88,20 @@ type RodGeometry = {
   };
   rodLinePath: string;
   waterLinePath: string;
+};
+
+type RodGeometryInput = {
+  size: StageSize;
+  activeCast: ActiveCast | null;
+  lineAttach: Point;
+  floatVisual: FloatVisual;
+  fightIntensity: number;
+};
+
+type RigMotion = {
+  floatVisual: FloatVisual;
+  fightIntensity: number;
+  lineAttach: Point;
   bobberStyle: {
     left: number;
     top: number;
@@ -93,6 +114,8 @@ type RodGeometry = {
     width: number;
     height: number;
   };
+  bobberClipStyle: CSSProperties | undefined;
+  isCastInWater: boolean;
 };
 
 const bottomTabs = [
@@ -112,11 +135,16 @@ const assetPreloadImages = [
 
 const bobberSize = 30;
 const bobberRadius = bobberSize / 2;
+const bobberVisibleAboveWater = Math.round(bobberRadius * 0.75);
 const rigLineHeight = 36;
 const hookSize = 18;
 const rigWidth = 44;
 const rigCenterX = rigWidth / 2;
 const shorePosition = { x: 0.44, y: 0.56 };
+const idleFloatVisual = { offset: 0, xOffset: 0, tilt: 0, submerge: 0 };
+const castAnimationMinMs = 680;
+const castAnimationMaxMs = 980;
+const castAnimationDefaultMs = 820;
 const rodImageSize = { width: 1536, height: 1024 };
 const rodTipAnchor = { x: 0.07878, y: 0.04785 };
 const rodBaseAnchor = { x: 0.383, y: 0.998 };
@@ -130,6 +158,14 @@ const rodLinePoints = [
   { x: 0.215, y: 0.23 },
   { x: 0.078, y: 0.048 },
 ];
+
+const clamp = (value: number, min: number, max: number): number => {
+  return Math.min(max, Math.max(min, value));
+};
+
+const easeInOutCubic = (value: number): number => {
+  return value < 0.5 ? 4 * value * value * value : 1 - Math.pow(-2 * value + 2, 3) / 2;
+};
 
 const useCastClock = (activeCast: ActiveCast | null): number => {
   const [now, setNow] = useState(() => Date.now());
@@ -189,11 +225,290 @@ const useStageSize = (stageRef: RefObject<HTMLDivElement | null>): StageSize => 
   return size;
 };
 
-const buildRodGeometry = (
+const useRiverKingRigMotion = (
   size: StageSize,
   activeCast: ActiveCast | null,
   now: number
-): RodGeometry => {
+): RigMotion => {
+  const { w, h } = size;
+  const [floatRel, setFloatRel] = useState<Point>(shorePosition);
+  const [floatVisual, setFloatVisual] = useState<FloatVisual>(idleFloatVisual);
+  const [landedCastKey, setLandedCastKey] = useState<string | null>(null);
+  const floatRelRef = useRef<Point>(shorePosition);
+  const tweenCancelRef = useRef<(() => void) | null>(null);
+  const activeCastKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    floatRelRef.current = floatRel;
+  }, [floatRel]);
+
+  useEffect(() => {
+    return () => {
+      if (tweenCancelRef.current) {
+        tweenCancelRef.current();
+        tweenCancelRef.current = null;
+      }
+    };
+  }, []);
+
+  const targetX = activeCast ? clamp(activeCast.castX, 0.05, 0.88) : shorePosition.x;
+  const targetY = activeCast ? clamp(activeCast.castY, 0.42, 0.9) : shorePosition.y;
+  const activeCastKey = activeCast ? `${activeCast.id}:${targetX}:${targetY}` : null;
+
+  useEffect(() => {
+    if (!activeCastKey) {
+      let resetFrameId: number | null = null;
+      activeCastKeyRef.current = null;
+      floatRelRef.current = shorePosition;
+      resetFrameId = window.requestAnimationFrame(() => {
+        setFloatRel((current) => {
+          if (Math.abs(current.x - shorePosition.x) < 0.0001 && Math.abs(current.y - shorePosition.y) < 0.0001) {
+            return current;
+          }
+
+          return shorePosition;
+        });
+      });
+
+      return () => {
+        if (resetFrameId !== null) {
+          window.cancelAnimationFrame(resetFrameId);
+        }
+      };
+    }
+
+    if (activeCastKeyRef.current === activeCastKey) {
+      return undefined;
+    }
+
+    activeCastKeyRef.current = activeCastKey;
+
+    if (tweenCancelRef.current) {
+      tweenCancelRef.current();
+      tweenCancelRef.current = null;
+    }
+
+    const from = {
+      x: Number.isFinite(floatRelRef.current.x) ? floatRelRef.current.x : shorePosition.x,
+      y: Number.isFinite(floatRelRef.current.y) ? floatRelRef.current.y : shorePosition.y,
+    };
+    const to = { x: targetX, y: targetY };
+    const relDistanceY = Math.abs(to.y - from.y);
+    const arcHeight = clamp(relDistanceY * 0.75, 0.015, 0.08);
+    const durationMs = clamp(
+      activeCast?.waitSeconds ? activeCast.waitSeconds * 120 : castAnimationDefaultMs,
+      castAnimationMinMs,
+      castAnimationMaxMs
+    );
+    let frameId: number | null = null;
+    let cancelled = false;
+    const start = performance.now();
+
+    const step = (frameNow: number) => {
+      if (cancelled) {
+        return;
+      }
+
+      const progress = Math.min(1, (frameNow - start) / durationMs);
+      const eased = easeInOutCubic(progress);
+      const arc = Math.sin(progress * Math.PI) * arcHeight;
+      const nextRel = {
+        x: from.x + (to.x - from.x) * eased,
+        y: from.y + (to.y - from.y) * eased - arc,
+      };
+
+      floatRelRef.current = nextRel;
+      setFloatRel(nextRel);
+
+      if (progress < 1) {
+        frameId = window.requestAnimationFrame(step);
+        return;
+      }
+
+      frameId = null;
+      tweenCancelRef.current = null;
+      setLandedCastKey(activeCastKey);
+    };
+
+    frameId = window.requestAnimationFrame(step);
+
+    const cancelTween = () => {
+      cancelled = true;
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+        frameId = null;
+      }
+    };
+
+    tweenCancelRef.current = cancelTween;
+
+    return () => {
+      cancelTween();
+      if (activeCastKeyRef.current === activeCastKey) {
+        activeCastKeyRef.current = null;
+      }
+      if (tweenCancelRef.current === cancelTween) {
+        tweenCancelRef.current = null;
+      }
+    };
+  }, [activeCast?.waitSeconds, activeCastKey, targetX, targetY]);
+
+  const biting =
+    activeCast?.stage === 'casting' && now >= activeCast.hookReadyAt && now <= activeCast.hookExpiresAt;
+  const tapping = activeCast?.stage === 'hooked';
+  const shouldAnimateFloat = biting || tapping;
+  const fightIntensity = tapping ? clamp(activeCast.challenge?.struggleIntensity ?? 0, 0, 1) : 0;
+
+  useEffect(() => {
+    if (!shouldAnimateFloat) {
+      const resetFrameId = window.requestAnimationFrame(() => {
+        setFloatVisual((current) => {
+          if (
+            current.offset === 0 &&
+            current.xOffset === 0 &&
+            current.tilt === 0 &&
+            current.submerge === 0
+          ) {
+            return current;
+          }
+
+          return idleFloatVisual;
+        });
+      });
+
+      return () => window.cancelAnimationFrame(resetFrameId);
+    }
+
+    let frameId: number | null = null;
+    let start: number | null = null;
+
+    const animate = (frameNow: number) => {
+      if (start === null) {
+        start = frameNow;
+      }
+
+      const elapsedSeconds = (frameNow - start) / 1000;
+      const state = tapping ? 'tapping' : 'biting';
+      const basePeriod = state === 'biting' ? 0.8 : 0.65;
+      const mainWave = Math.sin((elapsedSeconds * Math.PI * 2) / basePeriod);
+      let offset = 0;
+      let xOffset = 0;
+      let tilt = 0;
+      let submerge = 0;
+
+      if (state === 'biting') {
+        const extraWave = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.75));
+        offset = 10 + mainWave * 6.5 + extraWave * 1.8;
+        tilt = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.9)) * 6.5;
+        submerge = offset > 0 ? Math.min(1, offset / 11) : 0;
+      } else {
+        const quickWave = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.85));
+        const pullWave = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 1.45));
+        const snapWave = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.42));
+        offset =
+          5 +
+          fightIntensity * 18 +
+          mainWave * (4.2 + fightIntensity * 9) +
+          quickWave * (1.1 + fightIntensity * 5);
+        xOffset = pullWave * (5 + fightIntensity * 22) + snapWave * fightIntensity * 7;
+        tilt = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.95)) * (5 + fightIntensity * 18);
+        submerge = offset > 0 ? Math.min(1, offset / (9 + fightIntensity * 14)) : 0;
+      }
+
+      setFloatVisual((current) => {
+        const lerp = (currentValue: number, targetValue: number) => {
+          return currentValue + (targetValue - currentValue) * 0.18;
+        };
+        const next = {
+          offset: lerp(current.offset, offset),
+          xOffset: lerp(current.xOffset, xOffset),
+          tilt: lerp(current.tilt, tilt),
+          submerge: lerp(current.submerge, submerge),
+        };
+
+        if (
+          Math.abs(next.offset - current.offset) < 0.01 &&
+          Math.abs(next.xOffset - current.xOffset) < 0.01 &&
+          Math.abs(next.tilt - current.tilt) < 0.01 &&
+          Math.abs(next.submerge - current.submerge) < 0.01
+        ) {
+          return current;
+        }
+
+        return next;
+      });
+
+      frameId = window.requestAnimationFrame(animate);
+    };
+
+    frameId = window.requestAnimationFrame(animate);
+
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+    };
+  }, [biting, fightIntensity, shouldAnimateFloat, tapping]);
+
+  const floatBasePx = {
+    x: floatRel.x * w,
+    y: floatRel.y * h,
+  };
+  const floatPx = {
+    x: floatBasePx.x + floatVisual.xOffset,
+    y: floatBasePx.y + floatVisual.offset,
+  };
+  const waterlineY = clamp(
+    floatBasePx.y - bobberRadius + bobberVisibleAboveWater,
+    0,
+    Math.max(0, h)
+  );
+  const isCastInWater = Boolean(activeCastKey) && (landedCastKey === activeCastKey || biting || tapping);
+  const bobberBottom = floatPx.y + bobberRadius;
+  const bobberHiddenHeight = clamp(bobberBottom - waterlineY, 0, bobberSize);
+  const bobberClipPath =
+    isCastInWater && bobberHiddenHeight > 0.01
+      ? `inset(0 0 ${bobberHiddenHeight}px 0 round ${bobberRadius}px)`
+      : undefined;
+  const bobberClipStyle = bobberClipPath
+    ? {
+        clipPath: bobberClipPath,
+        WebkitClipPath: bobberClipPath,
+      }
+    : undefined;
+  const lineAttach = {
+    x: floatPx.x,
+    y: isCastInWater ? Math.min(floatPx.y, Math.max(0, waterlineY - 1)) : floatPx.y,
+  };
+
+  return {
+    floatVisual,
+    fightIntensity,
+    lineAttach,
+    bobberStyle: {
+      left: floatPx.x - bobberRadius,
+      top: floatPx.y - bobberRadius,
+      width: bobberSize,
+      height: bobberSize,
+    },
+    rigStyle: {
+      left: floatPx.x - rigCenterX,
+      top: floatPx.y + bobberRadius * 0.44,
+      width: rigWidth,
+      height: rigLineHeight + hookSize + 4,
+    },
+    bobberClipStyle,
+    isCastInWater,
+  };
+};
+
+const buildRodGeometry = ({
+  size,
+  activeCast,
+  lineAttach,
+  floatVisual,
+  fightIntensity,
+}: RodGeometryInput): RodGeometry => {
   const { w, h } = size;
   if (w <= 0 || h <= 0) {
     return {
@@ -201,8 +516,6 @@ const buildRodGeometry = (
       rodStyle: { left: 0, top: 0, width: 0, height: 0 },
       rodLinePath: '',
       waterLinePath: '',
-      bobberStyle: { left: 0, top: 0, width: 0, height: 0 },
-      rigStyle: { left: 0, top: 0, width: 0, height: 0 },
     };
   }
 
@@ -219,32 +532,6 @@ const buildRodGeometry = (
   const rodH = rodImageSize.height * rodScale;
   const rodLeft = w * rodBaseXFraction - rodW * rodBaseAnchor.x;
   const rodTop = h - rodH - h * 0.28;
-  const biteVisible =
-    activeCast?.stage === 'casting' && now >= activeCast.hookReadyAt && now <= activeCast.hookExpiresAt;
-  const biteElapsedSeconds = biteVisible ? (now - activeCast.hookReadyAt) / 1000 : 0;
-  const biteOffset = {
-    x: biteVisible ? Math.sin(biteElapsedSeconds * Math.PI * 8) * 1.4 : 0,
-    y: biteVisible
-      ? Math.sin(biteElapsedSeconds * Math.PI * 7) * 4 + Math.max(0, Math.sin(biteElapsedSeconds * Math.PI * 3)) * 3
-      : 0,
-  };
-  const baseBobberCenter = activeCast
-    ? {
-        x: Math.min(0.88, Math.max(0.05, activeCast.castX)) * w,
-        y: Math.min(0.9, Math.max(0.42, activeCast.castY)) * h,
-      }
-    : {
-        x: shorePosition.x * w,
-        y: shorePosition.y * h,
-      };
-  const bobberCenter = {
-    x: baseBobberCenter.x + biteOffset.x,
-    y: baseBobberCenter.y + biteOffset.y,
-  };
-  const lineAttach = {
-    x: bobberCenter.x,
-    y: activeCast ? bobberCenter.y - Math.round(bobberRadius * 0.28) : bobberCenter.y,
-  };
   const tip = {
     x: rodLeft + rodW * rodTipAnchor.x,
     y: rodTop + rodH * rodTipAnchor.y,
@@ -265,9 +552,10 @@ const buildRodGeometry = (
   const dy = lineAttach.y - lastRodPoint.y;
   const dist = Math.hypot(dx, dy);
   const shouldShowSlack = !activeCast;
+  const hookedLinePull = activeCast?.stage === 'hooked' ? floatVisual.xOffset * (0.4 + fightIntensity * 0.75) : 0;
   const waterLinePath = shouldShowSlack
     ? buildSlackLine(lastRodPoint, lineAttach, dist, h)
-    : buildTautLine(lastRodPoint, lineAttach, dist, h);
+    : buildTautLine(lastRodPoint, lineAttach, dist, h, hookedLinePull, fightIntensity);
 
   return {
     ready: true,
@@ -279,18 +567,6 @@ const buildRodGeometry = (
     },
     rodLinePath,
     waterLinePath,
-    bobberStyle: {
-      left: bobberCenter.x - bobberRadius,
-      top: bobberCenter.y - bobberRadius,
-      width: bobberSize,
-      height: bobberSize,
-    },
-    rigStyle: {
-      left: bobberCenter.x - rigCenterX,
-      top: bobberCenter.y + bobberRadius * 0.44,
-      width: rigWidth,
-      height: rigLineHeight + hookSize + 4,
-    },
   };
 };
 
@@ -311,13 +587,20 @@ const buildSlackLine = (from: Point, to: Point, dist: number, stageHeight: numbe
   return `M ${from.x},${from.y} C ${control1.x},${control1.y} ${control2.x},${control2.y} ${to.x},${to.y}`;
 };
 
-const buildTautLine = (from: Point, to: Point, dist: number, stageHeight: number): string => {
+const buildTautLine = (
+  from: Point,
+  to: Point,
+  dist: number,
+  stageHeight: number,
+  hookedLinePull: number,
+  fightIntensity: number
+): string => {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const gentleSag = Math.min(stageHeight * 0.08, dist * 0.12);
   const control = {
-    x: from.x + dx * 0.5,
-    y: from.y + dy * 0.5 + gentleSag,
+    x: from.x + dx * 0.5 + hookedLinePull,
+    y: from.y + dy * 0.5 + gentleSag + stageHeight * 0.03 * fightIntensity,
   };
 
   return `M ${from.x},${from.y} Q ${control.x},${control.y} ${to.x},${to.y}`;
@@ -507,10 +790,24 @@ const FishingStage = ({
   const now = useCastClock(activeCast);
   const stageRef = useRef<HTMLDivElement>(null);
   const stageSize = useStageSize(stageRef);
+  const rigMotion = useRiverKingRigMotion(stageSize, activeCast, now);
 
   const rodGeometry = useMemo(
-    () => buildRodGeometry(stageSize, activeCast, now),
-    [activeCast, now, stageSize]
+    () =>
+      buildRodGeometry({
+        size: stageSize,
+        activeCast,
+        lineAttach: rigMotion.lineAttach,
+        floatVisual: rigMotion.floatVisual,
+        fightIntensity: rigMotion.fightIntensity,
+      }),
+    [
+      activeCast,
+      rigMotion.fightIntensity,
+      rigMotion.floatVisual,
+      rigMotion.lineAttach,
+      stageSize,
+    ]
   );
   const biteReady = activeCast?.stage === 'casting' && now >= activeCast.hookReadyAt;
   const rigStateClass =
@@ -581,12 +878,20 @@ const FishingStage = ({
             </svg>
 
             <div className={`fishing-rig ${rigStateClass}`} aria-hidden="true">
-              <div className="bobber-node" style={rodGeometry.bobberStyle}>
-                <img className="bobber-img" src="/riverking/menu/bobber.webp" alt="" />
+              <div className="bobber-node" style={rigMotion.bobberStyle}>
+                <img
+                  className="bobber-img"
+                  src="/riverking/menu/bobber.webp"
+                  style={{
+                    transform: `rotate(${rigMotion.floatVisual.tilt}deg)`,
+                    ...rigMotion.bobberClipStyle,
+                  }}
+                  alt=""
+                />
               </div>
 
-              {activeCast?.stage !== 'hooked' ? (
-                <div className="rig-node" style={rodGeometry.rigStyle}>
+              {!rigMotion.isCastInWater ? (
+                <div className="rig-node" style={rigMotion.rigStyle}>
                   <span className="rig-drop-line" />
                   <svg className="hook-icon" viewBox="0 0 28 28">
                     <path d="M15.8 3.4C14 6.9 14.2 10.7 16.2 13.8L19.5 19C20.8 21.1 20 23.9 17.7 25.1C15.5 26.2 12.7 25.3 11.6 23C11.1 22 11 20.9 11.3 19.9" />
