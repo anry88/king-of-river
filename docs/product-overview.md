@@ -11,7 +11,7 @@ The first Reddit version focuses on a short-session fishing loop:
 - cast at a location
 - hook a fish
 - pull through a hidden tap challenge before the fish escapes
-- save coins, XP, discoveries, and recent catches
+- save coins, XP, total caught weight, discoveries, and recent catches
 
 The architecture leaves explicit room for the RiverKing systems that make sense on Reddit:
 
@@ -29,7 +29,7 @@ The loop is deliberately small:
 1. `Cast`: the player starts a cast in the current location.
 2. `Hook`: the backend chooses a fish from the location pool and can fail the hook if the player reacts too late.
 3. `Land`: the player taps one pull button enough times before the hidden challenge expires.
-4. `Progress`: the backend records the catch, coins, XP, and discoveries.
+4. `Progress`: the backend records the catch, coins, XP, total caught weight, location unlock progress, and discoveries.
 
 This keeps the Reddit game fast while preserving the same staged shape as RiverKing: cast, hook, hidden dynamic landing challenge, catch or escape presentation.
 
@@ -46,8 +46,8 @@ The game runs inside Reddit custom posts:
 ## Next Product Passes
 
 - Add domain tests for challenge resolution and weighted fish selection.
-- Add daily rewards and streak persistence.
+- Add deeper balancing around the regular RiverKing fish and location catalog.
 - Add leaderboards with Redis sorted sets.
 - Add achievement and quest services.
-- Add richer visual assets from the RiverKing source catalog.
+- Add richer visual polish around the RiverKing source catalog.
 - Add event configuration routes and corresponding `devvit.json` menu mappings.

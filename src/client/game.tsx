@@ -27,6 +27,7 @@ type BottomTabDefinition = {
 
 type SetupBarProps = {
   baits: BaitDefinition[];
+  locations: LocationDefinition[];
   profile: GameProfile;
   selectedBait: BaitDefinition | null;
   selectedLocation: LocationDefinition | null;
@@ -172,10 +173,30 @@ type RigMotion = {
 };
 
 const bottomTabs: BottomTabDefinition[] = [
-  { id: 'fishing', label: 'Fishing', icon: '/riverking/menu/fishing.webp', disabled: false },
-  { id: 'ratings', label: 'Ratings', icon: '/riverking/menu/ratings.webp', disabled: true },
-  { id: 'catalog', label: 'Catalog', icon: '/riverking/menu/guide.webp', disabled: true },
-  { id: 'shop', label: 'Shop', icon: '/riverking/menu/shop.webp', disabled: false },
+  {
+    id: 'fishing',
+    label: 'Fishing',
+    icon: '/riverking/menu/fishing.webp',
+    disabled: false,
+  },
+  {
+    id: 'ratings',
+    label: 'Ratings',
+    icon: '/riverking/menu/ratings.webp',
+    disabled: true,
+  },
+  {
+    id: 'catalog',
+    label: 'Catalog',
+    icon: '/riverking/menu/guide.webp',
+    disabled: true,
+  },
+  {
+    id: 'shop',
+    label: 'Shop',
+    icon: '/riverking/menu/shop.webp',
+    disabled: false,
+  },
 ];
 
 const assetPreloadImages = [
@@ -191,7 +212,8 @@ const bobberSize = 30;
 const bobberRadius = bobberSize / 2;
 const bobberVisibleAboveWater = Math.round(bobberSize * 0.72);
 const bobberMinimumVisibleAboveWater = Math.round(bobberSize * 0.28);
-const bobberMaxDownOffset = bobberVisibleAboveWater - bobberMinimumVisibleAboveWater;
+const bobberMaxDownOffset =
+  bobberVisibleAboveWater - bobberMinimumVisibleAboveWater;
 const rigLineHeight = 36;
 const hookSize = 18;
 const rigWidth = 44;
@@ -223,7 +245,9 @@ const clamp = (value: number, min: number, max: number): number => {
 };
 
 const easeInOutCubic = (value: number): number => {
-  return value < 0.5 ? 4 * value * value * value : 1 - Math.pow(-2 * value + 2, 3) / 2;
+  return value < 0.5
+    ? 4 * value * value * value
+    : 1 - Math.pow(-2 * value + 2, 3) / 2;
 };
 
 const useCastClock = (activeCast: ActiveCast | null): number => {
@@ -235,9 +259,16 @@ const useCastClock = (activeCast: ActiveCast | null): number => {
     }
 
     const currentTime = Date.now();
-    const biteVisible = currentTime >= activeCast.hookReadyAt && currentTime <= activeCast.hookExpiresAt;
-    const nextTickAt = currentTime < activeCast.hookReadyAt ? activeCast.hookReadyAt : activeCast.hookExpiresAt;
-    const timeoutMs = biteVisible ? 110 : Math.max(80, nextTickAt - currentTime + 20);
+    const biteVisible =
+      currentTime >= activeCast.hookReadyAt &&
+      currentTime <= activeCast.hookExpiresAt;
+    const nextTickAt =
+      currentTime < activeCast.hookReadyAt
+        ? activeCast.hookReadyAt
+        : activeCast.hookExpiresAt;
+    const timeoutMs = biteVisible
+      ? 110
+      : Math.max(80, nextTickAt - currentTime + 20);
     const timeoutId = window.setTimeout(() => {
       setNow(Date.now());
     }, timeoutMs);
@@ -248,7 +279,9 @@ const useCastClock = (activeCast: ActiveCast | null): number => {
   return now;
 };
 
-const useStageSize = (stageRef: RefObject<HTMLDivElement | null>): StageSize => {
+const useStageSize = (
+  stageRef: RefObject<HTMLDivElement | null>
+): StageSize => {
   const [size, setSize] = useState<StageSize>({ w: 0, h: 0 });
 
   useEffect(() => {
@@ -265,7 +298,10 @@ const useStageSize = (stageRef: RefObject<HTMLDivElement | null>): StageSize => 
       };
 
       setSize((current) => {
-        if (Math.abs(current.w - nextSize.w) < 0.5 && Math.abs(current.h - nextSize.h) < 0.5) {
+        if (
+          Math.abs(current.w - nextSize.w) < 0.5 &&
+          Math.abs(current.h - nextSize.h) < 0.5
+        ) {
           return current;
         }
 
@@ -301,9 +337,12 @@ const useCooldownRemaining = (availableAt: number): number => {
       return undefined;
     }
 
-    const timeoutId = window.setTimeout(() => {
-      setCooldownNow(Date.now());
-    }, Math.min(250, remainingMs + 20));
+    const timeoutId = window.setTimeout(
+      () => {
+        setCooldownNow(Date.now());
+      },
+      Math.min(250, remainingMs + 20)
+    );
 
     return () => window.clearTimeout(timeoutId);
   }, [availableAt, remainingMs]);
@@ -337,9 +376,15 @@ const useRiverKingRigMotion = (
     };
   }, []);
 
-  const targetX = activeCast ? clamp(activeCast.castX, 0.05, 0.88) : shorePosition.x;
-  const targetY = activeCast ? clamp(activeCast.castY, 0.42, 0.9) : shorePosition.y;
-  const activeCastKey = activeCast ? `${activeCast.id}:${targetX}:${targetY}` : null;
+  const targetX = activeCast
+    ? clamp(activeCast.castX, 0.05, 0.88)
+    : shorePosition.x;
+  const targetY = activeCast
+    ? clamp(activeCast.castY, 0.42, 0.9)
+    : shorePosition.y;
+  const activeCastKey = activeCast
+    ? `${activeCast.id}:${targetX}:${targetY}`
+    : null;
 
   useEffect(() => {
     if (!activeCastKey) {
@@ -348,7 +393,10 @@ const useRiverKingRigMotion = (
       floatRelRef.current = shorePosition;
       resetFrameId = window.requestAnimationFrame(() => {
         setFloatRel((current) => {
-          if (Math.abs(current.x - shorePosition.x) < 0.0001 && Math.abs(current.y - shorePosition.y) < 0.0001) {
+          if (
+            Math.abs(current.x - shorePosition.x) < 0.0001 &&
+            Math.abs(current.y - shorePosition.y) < 0.0001
+          ) {
             return current;
           }
 
@@ -375,14 +423,20 @@ const useRiverKingRigMotion = (
     }
 
     const from = {
-      x: Number.isFinite(floatRelRef.current.x) ? floatRelRef.current.x : shorePosition.x,
-      y: Number.isFinite(floatRelRef.current.y) ? floatRelRef.current.y : shorePosition.y,
+      x: Number.isFinite(floatRelRef.current.x)
+        ? floatRelRef.current.x
+        : shorePosition.x,
+      y: Number.isFinite(floatRelRef.current.y)
+        ? floatRelRef.current.y
+        : shorePosition.y,
     };
     const to = { x: targetX, y: targetY };
     const relDistanceY = Math.abs(to.y - from.y);
     const arcHeight = clamp(relDistanceY * 0.75, 0.015, 0.08);
     const durationMs = clamp(
-      activeCast?.waitSeconds ? activeCast.waitSeconds * castAnimationWaitFactorMs : castAnimationDefaultMs,
+      activeCast?.waitSeconds
+        ? activeCast.waitSeconds * castAnimationWaitFactorMs
+        : castAnimationDefaultMs,
       castAnimationMinMs,
       castAnimationMaxMs
     );
@@ -440,13 +494,21 @@ const useRiverKingRigMotion = (
   }, [activeCast?.waitSeconds, activeCastKey, targetX, targetY]);
 
   const biting =
-    activeCast?.stage === 'casting' && now >= activeCast.hookReadyAt && now <= activeCast.hookExpiresAt;
+    activeCast?.stage === 'casting' &&
+    now >= activeCast.hookReadyAt &&
+    now <= activeCast.hookExpiresAt;
   const tapping = activeCast?.stage === 'hooked';
   const shouldAnimateFloat = biting || tapping;
-  const fightIntensity = tapping ? clamp(activeCast.challenge?.struggleIntensity ?? 0, 0, 1) : 0;
-  const isCurrentCastLanded = Boolean(activeCastKey) && landedCastKey === activeCastKey;
-  const waitingForBite = activeCast?.stage === 'casting' && isCurrentCastLanded && !biting;
-  const restingFloatVisual = waitingForBite ? waitingFloatVisual : idleFloatVisual;
+  const fightIntensity = tapping
+    ? clamp(activeCast.challenge?.struggleIntensity ?? 0, 0, 1)
+    : 0;
+  const isCurrentCastLanded =
+    Boolean(activeCastKey) && landedCastKey === activeCastKey;
+  const waitingForBite =
+    activeCast?.stage === 'casting' && isCurrentCastLanded && !biting;
+  const restingFloatVisual = waitingForBite
+    ? waitingFloatVisual
+    : idleFloatVisual;
 
   useEffect(() => {
     if (!shouldAnimateFloat) {
@@ -486,22 +548,35 @@ const useRiverKingRigMotion = (
       let submerge = 0;
 
       if (state === 'biting') {
-        const extraWave = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.75));
+        const extraWave = Math.sin(
+          (elapsedSeconds * Math.PI * 2) / (basePeriod * 0.75)
+        );
         offset = 3.5 + mainWave * 4.2 + extraWave * 1;
-        tilt = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.9)) * 6.5;
+        tilt =
+          Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.9)) * 6.5;
         submerge = offset > 0 ? Math.min(1, offset / 8) : 0;
       } else {
-        const quickWave = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.85));
-        const pullWave = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 1.45));
-        const snapWave = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.42));
+        const quickWave = Math.sin(
+          (elapsedSeconds * Math.PI * 2) / (basePeriod * 0.85)
+        );
+        const pullWave = Math.sin(
+          (elapsedSeconds * Math.PI * 2) / (basePeriod * 1.45)
+        );
+        const snapWave = Math.sin(
+          (elapsedSeconds * Math.PI * 2) / (basePeriod * 0.42)
+        );
         offset =
           5 +
           fightIntensity * 18 +
           mainWave * (4.2 + fightIntensity * 9) +
           quickWave * (1.1 + fightIntensity * 5);
-        xOffset = pullWave * (5 + fightIntensity * 22) + snapWave * fightIntensity * 7;
-        tilt = Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.95)) * (5 + fightIntensity * 18);
-        submerge = offset > 0 ? Math.min(1, offset / (9 + fightIntensity * 14)) : 0;
+        xOffset =
+          pullWave * (5 + fightIntensity * 22) + snapWave * fightIntensity * 7;
+        tilt =
+          Math.sin((elapsedSeconds * Math.PI * 2) / (basePeriod * 0.95)) *
+          (5 + fightIntensity * 18);
+        submerge =
+          offset > 0 ? Math.min(1, offset / (9 + fightIntensity * 14)) : 0;
       }
 
       setFloatVisual((current) => {
@@ -543,7 +618,8 @@ const useRiverKingRigMotion = (
     x: floatRel.x * w,
     y: floatRel.y * h,
   };
-  const isCastInWater = Boolean(activeCastKey) && (isCurrentCastLanded || biting || tapping);
+  const isCastInWater =
+    Boolean(activeCastKey) && (isCurrentCastLanded || biting || tapping);
   const floatDisplayOffset = isCastInWater
     ? Math.min(floatVisual.offset, bobberMaxDownOffset)
     : floatVisual.offset;
@@ -570,7 +646,9 @@ const useRiverKingRigMotion = (
     : undefined;
   const lineAttach = {
     x: floatPx.x,
-    y: isCastInWater ? Math.min(floatPx.y, Math.max(0, waterlineY - 1)) : floatPx.y,
+    y: isCastInWater
+      ? Math.min(floatPx.y, Math.max(0, waterlineY - 1))
+      : floatPx.y,
   };
 
   return {
@@ -637,17 +715,29 @@ const buildRodGeometry = ({
   const lastRodPoint = rodPointsPx[rodPointsPx.length - 1] ?? fallbackLastPoint;
   const rodLinePath = firstRodPoint
     ? rodPointsPx
-        .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x},${point.y}`)
+        .map(
+          (point, index) => `${index === 0 ? 'M' : 'L'} ${point.x},${point.y}`
+        )
         .join(' ')
     : '';
   const dx = lineAttach.x - lastRodPoint.x;
   const dy = lineAttach.y - lastRodPoint.y;
   const dist = Math.hypot(dx, dy);
   const shouldShowSlack = !activeCast;
-  const hookedLinePull = activeCast?.stage === 'hooked' ? floatVisual.xOffset * (0.4 + fightIntensity * 0.75) : 0;
+  const hookedLinePull =
+    activeCast?.stage === 'hooked'
+      ? floatVisual.xOffset * (0.4 + fightIntensity * 0.75)
+      : 0;
   const waterLinePath = shouldShowSlack
     ? buildSlackLine(lastRodPoint, lineAttach, dist, h)
-    : buildTautLine(lastRodPoint, lineAttach, dist, h, hookedLinePull, fightIntensity);
+    : buildTautLine(
+        lastRodPoint,
+        lineAttach,
+        dist,
+        h,
+        hookedLinePull,
+        fightIntensity
+      );
 
   return {
     ready: true,
@@ -662,7 +752,12 @@ const buildRodGeometry = ({
   };
 };
 
-const buildSlackLine = (from: Point, to: Point, dist: number, stageHeight: number): string => {
+const buildSlackLine = (
+  from: Point,
+  to: Point,
+  dist: number,
+  stageHeight: number
+): string => {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const sag = Math.min(stageHeight * 0.06, Math.max(8, dist * 0.2));
@@ -726,7 +821,9 @@ export const App = () => {
   const { profile, catalog, message } = snapshot;
   const activeCast = profile.activeCast;
   const selectedLocation =
-    catalog.locations.find((location) => location.id === profile.currentLocationId) ??
+    catalog.locations.find(
+      (location) => location.id === profile.currentLocationId
+    ) ??
     catalog.locations[0] ??
     null;
   const selectedBait =
@@ -735,24 +832,31 @@ export const App = () => {
     null;
   const lastCatch = snapshot.lastCatch;
   const dailyRewardStatus = snapshot.dailyRewardStatus;
-  const caughtFish =
-    lastCatch ? catalog.fish.find((fish) => fish.id === lastCatch.fishId) ?? null : null;
+  const caughtFish = lastCatch
+    ? (catalog.fish.find((fish) => fish.id === lastCatch.fishId) ?? null)
+    : null;
 
   return (
     <main className="rk-shell">
       <section className="rk-screen">
         <AssetPreloads
           images={[
-            ...catalog.fish.map((fish) => fish.image),
+            ...catalog.locations.map((location) => location.image),
+            ...catalog.baits.map((bait) => bait.image),
             ...catalog.baitPacks.map((pack) => pack.image),
+            ...(selectedBait ? [selectedBait.image] : []),
+            ...(caughtFish ? [caughtFish.image] : []),
           ]}
         />
         <SetupBar
           baits={catalog.baits}
+          locations={catalog.locations}
           profile={profile}
           selectedBait={selectedBait}
           selectedLocation={selectedLocation}
-          disabled={activeTab !== 'fishing' || Boolean(activeCast) || actionPending}
+          disabled={
+            activeTab !== 'fishing' || Boolean(activeCast) || actionPending
+          }
           onSelectLocation={selectLocation}
           onSelectBait={selectBait}
         />
@@ -815,7 +919,11 @@ const LoadingState = ({ text }: { text: string }) => {
   return (
     <main className="rk-shell">
       <section className="rk-loading">
-        <img className="rk-loading-icon" src="/riverking/icon.png" alt="King of River" />
+        <img
+          className="rk-loading-icon"
+          src="/riverking/icon.png"
+          alt="King of River"
+        />
         <h1>King of River</h1>
         <p>{text}</p>
       </section>
@@ -825,6 +933,7 @@ const LoadingState = ({ text }: { text: string }) => {
 
 const SetupBar = ({
   baits,
+  locations,
   profile,
   selectedBait,
   selectedLocation,
@@ -832,10 +941,16 @@ const SetupBar = ({
   onSelectLocation,
   onSelectBait,
 }: SetupBarProps) => {
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   const [baitPickerOpen, setBaitPickerOpen] = useState(false);
   const selectedBaitQuantity = selectedBait
     ? getBaitInventoryQuantity(profile, selectedBait.id)
     : 0;
+
+  const handleSelectLocation = (locationId: string) => {
+    setLocationPickerOpen(false);
+    onSelectLocation(locationId);
+  };
 
   const handleSelectBait = (baitId: string) => {
     setBaitPickerOpen(false);
@@ -844,28 +959,77 @@ const SetupBar = ({
 
   return (
     <header className="setup-bar">
-      <button
-        className="setup-cell setup-cell-location"
-        disabled={disabled}
-        onClick={() => onSelectLocation(selectedLocation?.id ?? profile.currentLocationId)}
-        type="button"
-      >
-        <span className="setup-label">Location</span>
-        <strong>{selectedLocation?.name ?? 'Pond'}</strong>
-      </button>
+      <div className="setup-picker-wrap setup-location-picker-wrap">
+        <button
+          className="setup-cell setup-cell-location"
+          disabled={disabled}
+          onClick={() => {
+            setLocationPickerOpen((open) => !open);
+            setBaitPickerOpen(false);
+          }}
+          type="button"
+        >
+          <span>
+            <span className="setup-label">Location</span>
+            <strong>{selectedLocation?.name ?? 'Pond'}</strong>
+          </span>
+          <span className="setup-caret" aria-hidden="true">
+            ▾
+          </span>
+        </button>
+
+        {locationPickerOpen && !disabled ? (
+          <div className="location-picker" aria-label="Location picker">
+            {locations.map((location) => {
+              const selected = location.id === profile.currentLocationId;
+              const unlocked = isLocationUnlocked(location, profile);
+
+              return (
+                <button
+                  className={`location-option ${selected ? 'location-option-selected' : ''} ${
+                    !unlocked ? 'location-option-disabled' : ''
+                  }`}
+                  disabled={!unlocked}
+                  key={location.id}
+                  onClick={() => handleSelectLocation(location.id)}
+                  type="button"
+                >
+                  <span
+                    className="location-option-thumb"
+                    style={{ backgroundImage: `url(${location.image})` }}
+                  />
+                  <span>
+                    <strong>{location.name}</strong>
+                    <small>
+                      {unlocked
+                        ? getLocationWaterLabel(location.water)
+                        : `${formatWeight(location.unlockWeightKg)} kg required`}
+                    </small>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
 
       <div className="setup-picker-wrap">
         <button
           className="setup-cell setup-cell-bait"
           disabled={disabled}
-          onClick={() => setBaitPickerOpen((open) => !open)}
+          onClick={() => {
+            setBaitPickerOpen((open) => !open);
+            setLocationPickerOpen(false);
+          }}
           type="button"
         >
           {selectedBait ? <img src={selectedBait.image} alt="" /> : null}
           <span>
             <span className="setup-label">Bait</span>
             <strong>
-              {selectedBait ? `${selectedBait.name} · ${selectedBaitQuantity}` : 'Choose'}
+              {selectedBait
+                ? `${selectedBait.name} · ${selectedBaitQuantity}`
+                : 'Choose'}
             </strong>
           </span>
           <span className="setup-caret" aria-hidden="true">
@@ -878,7 +1042,9 @@ const SetupBar = ({
             {baits.map((bait) => {
               const selected = bait.id === profile.currentBaitId;
               const quantity = getBaitInventoryQuantity(profile, bait.id);
-              const wrongWater = selectedLocation ? bait.water !== selectedLocation.water : false;
+              const wrongWater = selectedLocation
+                ? !locationAcceptsBait(selectedLocation, bait)
+                : false;
               const unavailable = quantity <= 0 || wrongWater;
 
               return (
@@ -894,7 +1060,9 @@ const SetupBar = ({
                   <img src={bait.image} alt="" />
                   <span>
                     <strong>{bait.name}</strong>
-                    <small>{wrongWater ? 'Wrong water' : `${quantity} left`}</small>
+                    <small>
+                      {wrongWater ? 'Wrong water' : `${quantity} left`}
+                    </small>
                   </span>
                 </button>
               );
@@ -923,7 +1091,8 @@ const FishingStage = ({
   onPull,
   onClaimDailyReward,
 }: FishingStageProps) => {
-  const backgroundImage = selectedLocation?.image ?? '/riverking/backgrounds/pond.webp';
+  const backgroundImage =
+    selectedLocation?.image ?? '/riverking/backgrounds/pond.webp';
   const outcomeMessage = errorMessage ?? message;
   const outcomeKey = `${profile.updatedAt}-${outcomeMessage}`;
   const now = useCastClock(activeCast);
@@ -970,15 +1139,16 @@ const FishingStage = ({
       stageSize,
     ]
   );
-  const biteReady = activeCast?.stage === 'casting' && now >= activeCast.hookReadyAt;
+  const biteReady =
+    activeCast?.stage === 'casting' && now >= activeCast.hookReadyAt;
   const rigStateClass =
     activeCast?.stage === 'hooked'
       ? 'fishing-rig-hooked'
       : biteReady
         ? 'fishing-rig-bite'
-      : activeCast
-        ? 'fishing-rig-active'
-        : 'fishing-rig-idle';
+        : activeCast
+          ? 'fishing-rig-active'
+          : 'fishing-rig-idle';
   const shouldShowCatchFlight = Boolean(
     lastCatch && caughtFish && message.startsWith('Caught:')
   );
@@ -990,7 +1160,9 @@ const FishingStage = ({
     ? getBaitInventoryQuantity(profile, selectedBait.id)
     : 0;
   const selectedBaitWorksHere = Boolean(
-    selectedBait && selectedLocation && selectedBait.water === selectedLocation.water
+    selectedBait &&
+    selectedLocation &&
+    locationAcceptsBait(selectedLocation, selectedBait)
   );
   const canStartCast = selectedBaitQuantity > 0 && selectedBaitWorksHere;
   const startBlockedLabel = selectedBaitWorksHere ? 'No bait' : 'Wrong water';
@@ -1019,6 +1191,10 @@ const FishingStage = ({
               status={dailyRewardStatus}
               disabled={actionPending}
               onClaim={onClaimDailyReward}
+            />
+            <StatPill
+              label="Caught"
+              value={`${formatWeight(profile.totalCaughtWeightKg)} kg`}
             />
             <StatPill label="Coins" value={String(profile.coins)} />
           </div>
@@ -1072,7 +1248,13 @@ const FishingStage = ({
                     <path d="M10.1 20.2L6.4 18" />
                     <path d="M15.2 3.9L19 2.2" />
                   </svg>
-                  {selectedBait ? <img className="bait-on-hook" src={selectedBait.image} alt="" /> : null}
+                  {selectedBait ? (
+                    <img
+                      className="bait-on-hook"
+                      src={selectedBait.image}
+                      alt=""
+                    />
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -1138,7 +1320,8 @@ const ShopStage = ({
   onClaimDailyReward,
 }: ShopStageProps) => {
   const infoMessage =
-    message === 'Bait pack purchased.' || message.startsWith('Daily reward claimed:')
+    message === 'Bait pack purchased.' ||
+    message.startsWith('Daily reward claimed:')
       ? message
       : '';
   const outcomeMessage = errorMessage ?? infoMessage;
@@ -1157,11 +1340,17 @@ const ShopStage = ({
               disabled={actionPending}
               onClaim={onClaimDailyReward}
             />
+            <StatPill
+              label="Caught"
+              value={`${formatWeight(profile.totalCaughtWeightKg)} kg`}
+            />
             <StatPill label="Coins" value={profile.coins.toLocaleString()} />
           </div>
         </div>
 
-        {outcomeMessage ? <div className="shop-message">{outcomeMessage}</div> : null}
+        {outcomeMessage ? (
+          <div className="shop-message">{outcomeMessage}</div>
+        ) : null}
 
         <BaitBalance baits={baits} profile={profile} />
 
@@ -1190,7 +1379,13 @@ const ShopStage = ({
   );
 };
 
-const BaitBalance = ({ baits, profile }: { baits: BaitDefinition[]; profile: GameProfile }) => {
+const BaitBalance = ({
+  baits,
+  profile,
+}: {
+  baits: BaitDefinition[];
+  profile: GameProfile;
+}) => {
   return (
     <section className="bait-balance" aria-label="Bait balance">
       <h2>Bait Balance</h2>
@@ -1245,7 +1440,8 @@ const ShopPackCard = ({
   onBuyBaitPack,
 }: ShopPackCardProps) => {
   const canAfford = profile.coins >= pack.priceCoins;
-  const buyDisabled = actionPending || Boolean(profile.activeCast) || !canAfford;
+  const buyDisabled =
+    actionPending || Boolean(profile.activeCast) || !canAfford;
 
   return (
     <article className="shop-pack">
@@ -1274,7 +1470,11 @@ const ShopPackCard = ({
       </ul>
 
       <div className="shop-pack-footer">
-        <button disabled={buyDisabled} onClick={() => onBuyBaitPack(pack.id)} type="button">
+        <button
+          disabled={buyDisabled}
+          onClick={() => onBuyBaitPack(pack.id)}
+          type="button"
+        >
           {`${pack.priceCoins.toLocaleString()} coins`}
         </button>
       </div>
@@ -1282,12 +1482,47 @@ const ShopPackCard = ({
   );
 };
 
-const getBaitById = (baits: BaitDefinition[], baitId: string): BaitDefinition | null => {
+const getBaitById = (
+  baits: BaitDefinition[],
+  baitId: string
+): BaitDefinition | null => {
   return baits.find((bait) => bait.id === baitId) ?? null;
 };
 
-const getBaitInventoryQuantity = (profile: GameProfile, baitId: string): number => {
-  return profile.baitInventory.find((item) => item.baitId === baitId)?.quantity ?? 0;
+const getBaitInventoryQuantity = (
+  profile: GameProfile,
+  baitId: string
+): number => {
+  return (
+    profile.baitInventory.find((item) => item.baitId === baitId)?.quantity ?? 0
+  );
+};
+
+const isLocationUnlocked = (
+  location: LocationDefinition,
+  profile: GameProfile
+): boolean => {
+  return location.unlockWeightKg <= profile.totalCaughtWeightKg;
+};
+
+const locationAcceptsBait = (
+  location: LocationDefinition,
+  bait: BaitDefinition
+): boolean => {
+  return location.water === 'mixed' || location.water === bait.water;
+};
+
+const getLocationWaterLabel = (water: LocationDefinition['water']): string => {
+  if (water === 'mixed') return 'Fresh + Salt';
+  return water === 'fresh' ? 'Freshwater' : 'Saltwater';
+};
+
+const formatWeight = (weightKg: number): string => {
+  return Number(weightKg.toFixed(2)).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+    minimumFractionDigits:
+      weightKg < 10 && weightKg !== Math.round(weightKg) ? 2 : 0,
+  });
 };
 
 const ActionControls = ({
@@ -1310,13 +1545,18 @@ const ActionControls = ({
         onClick={onStartCast}
         type="button"
       >
-        {castCooldownActive ? 'Waiting' : canStartCast ? 'Cast' : startBlockedLabel}
+        {castCooldownActive
+          ? 'Waiting'
+          : canStartCast
+            ? 'Cast'
+            : startBlockedLabel}
       </button>
     );
   }
 
   if (activeCast.stage === 'casting') {
-    const hookReady = now >= activeCast.hookReadyAt && now <= activeCast.hookExpiresAt;
+    const hookReady =
+      now >= activeCast.hookReadyAt && now <= activeCast.hookExpiresAt;
 
     return (
       <button
@@ -1352,8 +1592,14 @@ const StatPill = ({ label, value }: StatPillProps) => {
   );
 };
 
-const DailyRewardButton = ({ status, disabled, onClaim }: DailyRewardButtonProps) => {
-  const title = status.available ? 'Claim daily reward' : 'Daily reward claimed';
+const DailyRewardButton = ({
+  status,
+  disabled,
+  onClaim,
+}: DailyRewardButtonProps) => {
+  const title = status.available
+    ? 'Claim daily reward'
+    : 'Daily reward claimed';
 
   return (
     <button

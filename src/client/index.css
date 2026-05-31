@@ -17,7 +17,12 @@
     background: #07120f;
     color: #f7f2dd;
     font-family:
-      Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      'Segoe UI',
       sans-serif;
   }
 
@@ -32,7 +37,11 @@
     min-height: 100vh;
     overflow: hidden;
     background:
-      radial-gradient(circle at 20% 0%, rgb(230 166 67 / 0.22), transparent 28%),
+      radial-gradient(
+        circle at 20% 0%,
+        rgb(230 166 67 / 0.22),
+        transparent 28%
+      ),
       linear-gradient(180deg, #11261f 0%, #07120f 100%);
   }
 
@@ -122,7 +131,9 @@
   }
 
   .setup-cell-location {
-    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) 14px;
+    gap: 8px;
   }
 
   .setup-cell-bait {
@@ -138,6 +149,7 @@
     filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.34));
   }
 
+  .setup-cell-location > span:not(.setup-caret),
   .setup-cell-bait > span:not(.setup-caret) {
     display: grid;
     min-width: 0;
@@ -170,6 +182,23 @@
     min-width: 0;
   }
 
+  .location-picker {
+    position: absolute;
+    z-index: 12;
+    top: calc(100% + 7px);
+    left: 0;
+    display: grid;
+    width: min(390px, calc(100vw - 30px));
+    max-height: min(62vh, 520px);
+    gap: 6px;
+    overflow: auto;
+    border: 1px solid rgb(228 197 116 / 0.34);
+    border-radius: 8px;
+    background: rgb(9 22 18 / 0.98);
+    padding: 6px;
+    box-shadow: 0 20px 44px rgb(0 0 0 / 0.42);
+  }
+
   .bait-picker {
     position: absolute;
     z-index: 12;
@@ -200,6 +229,30 @@
     text-align: left;
   }
 
+  .location-option {
+    display: grid;
+    min-height: 64px;
+    grid-template-columns: 66px minmax(0, 1fr);
+    align-items: center;
+    gap: 9px;
+    border: 1px solid rgb(228 197 116 / 0.16);
+    border-radius: 8px;
+    background: rgb(8 18 15 / 0.46);
+    color: #d8cfad;
+    padding: 7px 8px;
+    text-align: left;
+  }
+
+  .location-option-thumb {
+    width: 66px;
+    height: 44px;
+    overflow: hidden;
+    border-radius: 7px;
+    background-position: center;
+    background-size: cover;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+  }
+
   .bait-option img {
     width: 34px;
     height: 34px;
@@ -207,6 +260,7 @@
     filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.34));
   }
 
+  .location-option span:not(.location-option-thumb),
   .bait-option span {
     display: grid;
     min-width: 0;
@@ -214,6 +268,7 @@
     color: inherit;
   }
 
+  .location-option strong,
   .bait-option strong {
     display: block;
     min-width: 0;
@@ -226,6 +281,7 @@
     white-space: nowrap;
   }
 
+  .location-option small,
   .bait-option small {
     overflow: hidden;
     color: #9fc9ba;
@@ -236,17 +292,20 @@
     white-space: nowrap;
   }
 
+  .location-option-selected,
   .bait-option-selected {
     border-color: rgb(238 187 78 / 0.8);
     background: rgb(238 187 78 / 0.18);
     color: #fff1b8;
   }
 
+  .location-option-disabled,
   .bait-option-disabled {
     opacity: 0.5;
   }
 
   .setup-cell:disabled,
+  .location-option:disabled,
   .bait-option:disabled,
   .cast-action:disabled,
   .daily-reward-button:disabled,
@@ -547,7 +606,12 @@
     position: absolute;
     inset: 0;
     z-index: 0;
-    background: linear-gradient(180deg, rgb(0 0 0 / 0.16) 0%, rgb(0 0 0 / 0.1) 38%, rgb(0 0 0 / 0.54) 100%);
+    background: linear-gradient(
+      180deg,
+      rgb(0 0 0 / 0.16) 0%,
+      rgb(0 0 0 / 0.1) 38%,
+      rgb(0 0 0 / 0.54) 100%
+    );
   }
 
   .hud-row {
@@ -774,8 +838,12 @@
     position: absolute;
     inset: 17% 6%;
     border-radius: 50%;
-    background:
-      radial-gradient(circle, rgb(255 244 178 / 0.55) 0%, rgb(255 244 178 / 0.16) 42%, transparent 70%);
+    background: radial-gradient(
+      circle,
+      rgb(255 244 178 / 0.55) 0%,
+      rgb(255 244 178 / 0.16) 42%,
+      transparent 70%
+    );
     content: '';
     filter: blur(1px);
   }
@@ -786,7 +854,8 @@
     width: 100%;
     height: 100%;
     object-fit: contain;
-    filter: brightness(1.12) saturate(1.08) drop-shadow(0 10px 10px rgb(0 0 0 / 0.42));
+    filter: brightness(1.12) saturate(1.08)
+      drop-shadow(0 10px 10px rgb(0 0 0 / 0.42));
   }
 
   .cast-action {
@@ -886,7 +955,6 @@
   .bottom-tab:disabled:not(.bottom-tab-active) {
     opacity: 0.72;
   }
-
 }
 
 @keyframes pull-tap {
@@ -1037,5 +1105,4 @@
     width: 72px;
     height: 38px;
   }
-
 }

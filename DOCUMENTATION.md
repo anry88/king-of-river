@@ -27,7 +27,8 @@ The first game loop intentionally keeps rendering in React DOM rather than intro
 - `src/server/domain/fishing.ts`: pure game rules for cast, hook, and finish.
 - `src/server/services/gameService.ts`: loads state, calls domain rules, saves snapshots.
 - `src/server/storage/gameRepository.ts`: Redis keying and JSON serialization.
-- `src/shared/game/catalog.ts`: static fish/location/bait/bait-pack/rod catalog.
+- `src/shared/game/catalog.ts`: static bait/bait-pack/daily-reward/rod catalog and lookup helpers.
+- `src/shared/game/riverkingCatalog.ts`: regular RiverKing fish and location catalog.
 - `src/shared/game/types.ts`: DTOs and runtime validation for persisted profile shape.
 
 ## Current Data Model
@@ -40,7 +41,7 @@ king-of-river:post:{postId}:player:{username}
 
 The saved profile contains:
 
-- player coins, XP, level, selected location, selected bait, and selected rod
+- player coins, XP, level, total caught weight, selected location, selected bait, and selected rod
 - consumable bait inventory seeded with starter freshwater bait and expanded through shop purchases or daily rewards
 - discovered fish IDs
 - recent catch records
@@ -63,10 +64,11 @@ The saved profile contains:
 
 The first playable screen mirrors the Android RiverKing fishing surface at a small scope:
 
-- one regular location, `Pond`, using the original Android background asset
-- the original `Pond` fish pool and weights, including rare koi entries
+- 14 regular RiverKing locations using the original Android background assets
+- 219 regular RiverKing fish, excluding event-only content
 - a top location button and a compact bait picker for `Fresh Peaceful`, `Fresh Predator`, `Sea Peaceful`, `Sea Predator`
-- location water type hard-gates usable bait, so saltwater bait cannot be cast in the freshwater `Pond`
+- locations unlock by lifetime total caught weight
+- location water type hard-gates usable bait, while mixed locations accept both bait waters
 - predator bait type biases fish selection, but it does not remove fish from the pool
 - client-owned bite, hook, landing, and post-cycle cooldown timers so network latency does not shorten the visible interaction windows
 - hidden landing tap goals with timeout-based local escapes

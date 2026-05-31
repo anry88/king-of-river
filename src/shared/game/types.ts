@@ -1,6 +1,14 @@
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'mythic' | 'legendary';
+export type Rarity =
+  | 'common'
+  | 'uncommon'
+  | 'rare'
+  | 'epic'
+  | 'mythic'
+  | 'legendary';
 
 export type WaterType = 'fresh' | 'salt';
+
+export type LocationWaterType = WaterType | 'mixed';
 
 export type FishDefinition = {
   id: string;
@@ -64,8 +72,8 @@ export type LocationDefinition = {
   id: string;
   name: string;
   description: string;
-  water: WaterType;
-  unlockLevel: number;
+  water: LocationWaterType;
+  unlockWeightKg: number;
   sizeMultiplier: number;
   image: string;
   fishWeights: LocationFishWeight[];
@@ -136,12 +144,13 @@ export type DailyRewardStatus = {
 };
 
 export type GameProfile = {
-  version: 4;
+  version: 5;
   postId: string;
   username: string;
   coins: number;
   xp: number;
   level: number;
+  totalCaughtWeightKg: number;
   currentLocationId: string;
   currentBaitId: string;
   currentRodId: string;
@@ -175,7 +184,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> => {
 };
 
 const isStringArray = (value: unknown): value is string[] => {
-  return Array.isArray(value) && value.every((item) => typeof item === 'string');
+  return (
+    Array.isArray(value) && value.every((item) => typeof item === 'string')
+  );
 };
 
 const isNumber = (value: unknown): value is number => {
@@ -266,7 +277,7 @@ const isActiveCast = (value: unknown): value is ActiveCast => {
 
 export const isGameProfile = (value: unknown): value is GameProfile => {
   if (!isRecord(value)) return false;
-  if (value.version !== 4) return false;
+  if (value.version !== 4 && value.version !== 5) return false;
 
   const dailyReward = value.dailyReward;
   if (!isRecord(dailyReward)) return false;
@@ -275,21 +286,43 @@ export const isGameProfile = (value: unknown): value is GameProfile => {
     value.activeCast = null;
   }
 
-  return (
-    typeof value.postId === 'string' &&
-    typeof value.username === 'string' &&
-    isNumber(value.coins) &&
-    isNumber(value.xp) &&
-    isNumber(value.level) &&
-    typeof value.currentLocationId === 'string' &&
-    typeof value.currentBaitId === 'string' &&
-    typeof value.currentRodId === 'string' &&
-    isBaitInventoryArray(value.baitInventory) &&
-    isStringArray(value.discoveredFishIds) &&
-    isCatchRecordArray(value.catches) &&
-    (value.activeCast === null || isActiveCast(value.activeCast)) &&
-    (dailyReward.lastClaimedAt === null || isNumber(dailyReward.lastClaimedAt)) &&
-    isNumber(dailyReward.streak) &&
-    isNumber(value.updatedAt)
+  if (
+    typeof value.postId !== 'string' ||
+    typeof value.username !== 'string' ||
+    !isNumber(value.coins) ||
+    !isNumber(value.xp) ||
+    !isNumber(value.level) ||
+    typeof value.currentLocationId !== 'string' ||
+    typeof value.currentBaitId !== 'string' ||
+    typeof value.currentRodId !== 'string' ||
+    !isBaitInventoryArray(value.baitInventory) ||
+    !isStringArray(value.discoveredFishIds) ||
+    (value.activeCast !== null && !isActiveCast(value.activeCast)) ||
+    (dailyReward.lastClaimedAt !== null &&
+      !isNumber(dailyReward.lastClaimedAt)) ||
+    !isNumber(dailyReward.streak) ||
+    !isNumber(value.updatedAt)
+  ) {
+    return false;
+  }
+
+  const catches = value.catches;
+  if (!isCatchRecordArray(catches)) {
+    return false;
+  }
+
+  if (value.version === 4) {
+    value.version = 5;
+    value.totalCaughtWeightKg = totalCatchWeight(catches);
+  }
+
+  return isNumber(value.totalCaughtWeightKg);
+};
+
+const totalCatchWeight = (catches: CatchRecord[]): number => {
+  const total = catches.reduce(
+    (sum, catchRecord) => sum + catchRecord.weightKg,
+    0
   );
+  return Number(total.toFixed(2));
 };

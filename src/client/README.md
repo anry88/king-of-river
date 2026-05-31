@@ -5,7 +5,7 @@ The client package owns code that runs inside the Reddit iframe.
 ## Entrypoints
 
 - `splash.html` / `splash.tsx`: inline feed surface. Keep this small and avoid heavy game dependencies.
-- `game.html` / `game.tsx`: expanded game surface. This renders the first `Pond` screen, top location and bait picker controls, fishing controls, the daily reward icon beside coins, and the Shop tab.
+- `game.html` / `game.tsx`: expanded game surface. This renders the fishing screen, top location and bait picker controls, caught-weight progression, fishing controls, the daily reward icon beside coins, and the Shop tab.
 
 ## Supporting files
 

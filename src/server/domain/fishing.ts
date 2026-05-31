@@ -79,12 +79,13 @@ export const createInitialProfile = (
   now: number
 ): GameProfile => {
   return {
-    version: 4,
+    version: 5,
     postId,
     username,
     coins: 40,
     xp: 0,
     level: 1,
+    totalCaughtWeightKg: 0,
     currentLocationId: defaultLocationId,
     currentBaitId: defaultBaitId,
     currentRodId: defaultRodId,
@@ -161,7 +162,10 @@ export const claimDailyReward = (
   return {
     profile: {
       ...profile,
-      baitInventory: mergeBaitInventory(profile.baitInventory, status.todayRewards),
+      baitInventory: mergeBaitInventory(
+        profile.baitInventory,
+        status.todayRewards
+      ),
       dailyReward: {
         lastClaimedAt: now,
         streak,
@@ -180,7 +184,7 @@ export const startCast = (profile: GameProfile, now: number): GameProfile => {
 
   const location = requireUnlockedLocation(profile, profile.currentLocationId);
   const bait = requireBait(profile.currentBaitId);
-  if (bait.water !== location.water) {
+  if (!locationAcceptsBait(location, bait)) {
     throw new GameRuleError('This bait does not work at this location.');
   }
 
@@ -192,7 +196,7 @@ export const startCast = (profile: GameProfile, now: number): GameProfile => {
   return {
     ...profile,
     baitInventory,
-    currentBaitId: nextCurrentBaitId(baitInventory, location.water, bait.id),
+    currentBaitId: nextCurrentBaitId(baitInventory, bait.water, bait.id),
     activeCast: {
       id: randomUUID(),
       locationId: location.id,
@@ -212,7 +216,10 @@ export const startCast = (profile: GameProfile, now: number): GameProfile => {
   };
 };
 
-export const expireActiveCast = (profile: GameProfile, now: number): GameProfile => {
+export const expireActiveCast = (
+  profile: GameProfile,
+  now: number
+): GameProfile => {
   const activeCast = profile.activeCast;
   if (!activeCast) return profile;
 
@@ -287,10 +294,18 @@ export const finishCast = (
   profile: GameProfile,
   taps: number,
   now: number
-): { profile: GameProfile; catchRecord: CatchRecord | null; success: boolean } => {
+): {
+  profile: GameProfile;
+  catchRecord: CatchRecord | null;
+  success: boolean;
+} => {
   const activeCast = requireActiveCast(profile.activeCast, 'hooked');
 
-  if (!activeCast.hookedFish || !activeCast.challenge || !activeCast.expiresAt) {
+  if (
+    !activeCast.hookedFish ||
+    !activeCast.challenge ||
+    !activeCast.expiresAt
+  ) {
     throw new GameRuleError('No hooked fish is ready to land.');
   }
 
@@ -321,6 +336,9 @@ export const finishCast = (
       coins: profile.coins + catchRecord.coins,
       xp,
       level: calculateLevel(xp),
+      totalCaughtWeightKg: roundWeight(
+        profile.totalCaughtWeightKg + catchRecord.weightKg
+      ),
       discoveredFishIds,
       catches,
       activeCast: null,
@@ -383,13 +401,19 @@ const dailyRewardDay = (streak: number): number => {
 
 const dailyRewardPlanWater = (profile: GameProfile): WaterType => {
   const saltUnlocked = locationCatalog.some((location) => {
-    return location.water === 'salt' && location.unlockLevel <= profile.level;
+    return (
+      location.water !== 'fresh' &&
+      location.unlockWeightKg <= profile.totalCaughtWeightKg
+    );
   });
 
   return saltUnlocked ? 'salt' : 'fresh';
 };
 
-const dailyRewardsForDay = (water: WaterType, day: number): DailyRewardItem[] => {
+const dailyRewardsForDay = (
+  water: WaterType,
+  day: number
+): DailyRewardItem[] => {
   const plan = dailyRewardSchedule[water];
   const fallbackRewards = plan[0];
   if (!fallbackRewards) {
@@ -450,8 +474,12 @@ const mergeBaitInventory = (
   }));
 };
 
-const consumeBait = (inventory: BaitInventoryItem[], baitId: string): BaitInventoryItem[] => {
-  const current = inventory.find((item) => item.baitId === baitId)?.quantity ?? 0;
+const consumeBait = (
+  inventory: BaitInventoryItem[],
+  baitId: string
+): BaitInventoryItem[] => {
+  const current =
+    inventory.find((item) => item.baitId === baitId)?.quantity ?? 0;
   if (current <= 0) {
     throw new GameRuleError('No bait left.');
   }
@@ -466,7 +494,8 @@ const nextCurrentBaitId = (
   water: WaterType,
   currentBaitId: string
 ): string => {
-  const currentQuantity = inventory.find((item) => item.baitId === currentBaitId)?.quantity ?? 0;
+  const currentQuantity =
+    inventory.find((item) => item.baitId === currentBaitId)?.quantity ?? 0;
   if (currentQuantity > 0) return currentBaitId;
 
   const nextInventoryItem = inventory.find((item) => {
@@ -486,11 +515,18 @@ const requireUnlockedLocation = (
     throw new GameRuleError('Unknown fishing location.');
   }
 
-  if (location.unlockLevel > profile.level) {
+  if (location.unlockWeightKg > profile.totalCaughtWeightKg) {
     throw new GameRuleError('This location is not unlocked yet.');
   }
 
   return location;
+};
+
+const locationAcceptsBait = (
+  location: LocationDefinition,
+  bait: BaitDefinition
+): boolean => {
+  return location.water === 'mixed' || location.water === bait.water;
 };
 
 const requireBait = (baitId: string): BaitDefinition => {
@@ -523,13 +559,16 @@ const pickFish = (
     .map((entry) => {
       const fish = findFish(entry.fishId);
       if (!fish) return null;
-      if (fish.water !== location.water) return null;
+      if (fish.water !== bait.water) return null;
 
       const predatorFactor = fish.isPredator === bait.isPredator ? 1 : 0.18;
 
       return {
         fish,
-        weight: entry.weight * predatorFactor * rarityModifier(fish.rarity, rarityFactor),
+        weight:
+          entry.weight *
+          predatorFactor *
+          rarityModifier(fish.rarity, rarityFactor),
       };
     })
     .filter(isWeightedFish);
@@ -553,11 +592,15 @@ const pickFish = (
   return firstEntry.fish;
 };
 
-const isHookSuccessful = (location: LocationDefinition, reactionSeconds: number): boolean => {
+const isHookSuccessful = (
+  location: LocationDefinition,
+  reactionSeconds: number
+): boolean => {
   if (reactionSeconds >= 5) return false;
 
   const catchChance =
-    (1 - baseEscapeChance(location)) * Math.min(1, Math.max(0, 1 - reactionSeconds / 5));
+    (1 - baseEscapeChance(location)) *
+    Math.min(1, Math.max(0, 1 - reactionSeconds / 5));
 
   return Math.random() <= catchChance;
 };
@@ -574,14 +617,25 @@ const nextBiteWaitSeconds = (): number => {
 
 const nextCastSpot = (): { x: number; y: number } => {
   return {
-    x: pondCastArea.minX + Math.random() * (pondCastArea.maxX - pondCastArea.minX),
-    y: pondCastArea.farY + Math.random() * (pondCastArea.nearY - pondCastArea.farY),
+    x:
+      pondCastArea.minX +
+      Math.random() * (pondCastArea.maxX - pondCastArea.minX),
+    y:
+      pondCastArea.farY +
+      Math.random() * (pondCastArea.nearY - pondCastArea.farY),
   };
 };
 
-const biteRarityFactor = (waitSeconds: number, baitRarityBonus: number): number => {
-  const wait = Math.min(biteMaxWaitSeconds, Math.max(biteMinWaitSeconds, waitSeconds));
-  const waitFactor = (wait - biteMinWaitSeconds) / (biteMaxWaitSeconds - biteMinWaitSeconds);
+const biteRarityFactor = (
+  waitSeconds: number,
+  baitRarityBonus: number
+): number => {
+  const wait = Math.min(
+    biteMaxWaitSeconds,
+    Math.max(biteMinWaitSeconds, waitSeconds)
+  );
+  const waitFactor =
+    (wait - biteMinWaitSeconds) / (biteMaxWaitSeconds - biteMinWaitSeconds);
 
   return Math.min(1, Math.max(0, waitFactor + baitRarityBonus));
 };
@@ -609,7 +663,8 @@ const createHookedFish = (
 };
 
 const createChallenge = (hookedFish: HookedFish): HookChallenge => {
-  const tapGoal = rarityTapCount(hookedFish.rarity) + weightTapCount(hookedFish.weightKg);
+  const tapGoal =
+    rarityTapCount(hookedFish.rarity) + weightTapCount(hookedFish.weightKg);
   const durationMs = tapGoal > 15 ? 15000 : tapGoal > 10 ? 10000 : 5000;
   const struggleIntensity = Number(((tapGoal - 3) / 19).toFixed(2));
 
@@ -714,9 +769,12 @@ const logNormalWeight = (
   sizeMultiplier: number
 ): number => {
   const mu = Math.log(
-    (meanWeightKg * meanWeightKg) / Math.sqrt(weightVarianceKg + meanWeightKg * meanWeightKg)
+    (meanWeightKg * meanWeightKg) /
+      Math.sqrt(weightVarianceKg + meanWeightKg * meanWeightKg)
   );
-  const sigma = Math.sqrt(Math.log(1 + weightVarianceKg / (meanWeightKg * meanWeightKg)));
+  const sigma = Math.sqrt(
+    Math.log(1 + weightVarianceKg / (meanWeightKg * meanWeightKg))
+  );
   const weightKg = Math.exp(mu + sigma * nextGaussian()) * sizeMultiplier;
 
   return roundWeight(Math.max(0.05, weightKg));
