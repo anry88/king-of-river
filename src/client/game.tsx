@@ -1347,6 +1347,7 @@ const CatchFlight = ({
 const CatalogStage = ({ locations, fish, profile }: CatalogStageProps) => {
   const [section, setSection] = useState<CatalogSectionId>('locations');
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
+  const [rarityMenuOpen, setRarityMenuOpen] = useState(false);
   const [discoveredOnly, setDiscoveredOnly] = useState(false);
   const discoveredFishIds = useMemo(
     () => new Set(profile.discoveredFishIds),
@@ -1389,7 +1390,10 @@ const CatalogStage = ({ locations, fish, profile }: CatalogStageProps) => {
         >
           <button
             className={section === 'locations' ? 'catalog-tab-active' : ''}
-            onClick={() => setSection('locations')}
+            onClick={() => {
+              setRarityMenuOpen(false);
+              setSection('locations');
+            }}
             role="tab"
             type="button"
           >
@@ -1397,7 +1401,10 @@ const CatalogStage = ({ locations, fish, profile }: CatalogStageProps) => {
           </button>
           <button
             className={section === 'fish' ? 'catalog-tab-active' : ''}
-            onClick={() => setSection('fish')}
+            onClick={() => {
+              setRarityMenuOpen(false);
+              setSection('fish');
+            }}
             role="tab"
             type="button"
           >
@@ -1418,23 +1425,69 @@ const CatalogStage = ({ locations, fish, profile }: CatalogStageProps) => {
         ) : (
           <>
             <div className="catalog-filters" aria-label="Fish filters">
-              <label className="catalog-filter-select">
-                <span>Rarity</span>
-                <select
-                  value={rarityFilter}
-                  onChange={(event) =>
-                    setRarityFilter(
-                      parseRarityFilter(event.currentTarget.value)
-                    )
+              <div
+                className="catalog-filter-select"
+                onBlur={(event) => {
+                  const nextTarget = event.relatedTarget;
+                  if (
+                    !(nextTarget instanceof Node) ||
+                    !event.currentTarget.contains(nextTarget)
+                  ) {
+                    setRarityMenuOpen(false);
                   }
+                }}
+              >
+                <span className="catalog-filter-label">Rarity</span>
+                <button
+                  aria-controls="catalog-rarity-menu"
+                  aria-expanded={rarityMenuOpen}
+                  aria-haspopup="listbox"
+                  className="catalog-rarity-button"
+                  onClick={() => setRarityMenuOpen((open) => !open)}
+                  type="button"
                 >
-                  {rarityFilterOptions.map((option) => (
-                    <option key={option} value={option}>
-                      {rarityLabels[option]}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  <span>{rarityLabels[rarityFilter]}</span>
+                  <span className="catalog-rarity-caret" aria-hidden="true">
+                    ▾
+                  </span>
+                </button>
+                {rarityMenuOpen ? (
+                  <div
+                    className="catalog-rarity-menu"
+                    id="catalog-rarity-menu"
+                    role="listbox"
+                    tabIndex={-1}
+                  >
+                    {rarityFilterOptions.map((option) => {
+                      const selected = option === rarityFilter;
+
+                      return (
+                        <button
+                          aria-selected={selected}
+                          className={`catalog-rarity-option ${
+                            selected ? 'catalog-rarity-option-selected' : ''
+                          }`}
+                          key={option}
+                          onClick={() => {
+                            setRarityFilter(option);
+                            setRarityMenuOpen(false);
+                          }}
+                          role="option"
+                          type="button"
+                        >
+                          <span
+                            className="catalog-rarity-check"
+                            aria-hidden="true"
+                          >
+                            {selected ? '✓' : ''}
+                          </span>
+                          <span>{rarityLabels[option]}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
               <label className="catalog-filter-toggle">
                 <input
                   checked={discoveredOnly}
@@ -1443,7 +1496,9 @@ const CatalogStage = ({ locations, fish, profile }: CatalogStageProps) => {
                   }
                   type="checkbox"
                 />
-                <span>Discovered only</span>
+                <span className="catalog-filter-toggle-label">
+                  Discovered only
+                </span>
               </label>
             </div>
 
@@ -1807,10 +1862,6 @@ const compareFishForCatalog = (
   if (rarityDelta !== 0) return rarityDelta;
 
   return left.name.localeCompare(right.name, 'en', { sensitivity: 'base' });
-};
-
-const parseRarityFilter = (value: string): RarityFilter => {
-  return rarityFilterOptions.find((option) => option === value) ?? 'all';
 };
 
 const formatWeight = (weightKg: number): string => {
