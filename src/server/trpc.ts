@@ -2,6 +2,7 @@ import { TRPCError } from '@trpc/server';
 import { context as devvitContext, redis } from '@devvit/web/server';
 import { createGameService } from './services/gameService';
 import { createGameRepository } from './storage/gameRepository';
+import { createRatingRepository } from './storage/ratingRepository';
 import type { PlayerIdentity } from './storage/gameRepository';
 import { appRouter, type TrpcContext } from '../shared/trpc';
 
@@ -15,7 +16,8 @@ export const createTrpcContext = async (): Promise<TrpcContext> => {
     });
   }
 
-  const username = devvitContext.username ?? devvitContext.userId ?? 'anonymous';
+  const username =
+    devvitContext.username ?? devvitContext.userId ?? 'anonymous';
 
   const identity: PlayerIdentity = {
     postId,
@@ -23,7 +25,11 @@ export const createTrpcContext = async (): Promise<TrpcContext> => {
   };
 
   return {
-    gameService: createGameService(createGameRepository(redis), identity),
+    gameService: createGameService(
+      createGameRepository(redis),
+      createRatingRepository(redis),
+      identity
+    ),
   };
 };
 

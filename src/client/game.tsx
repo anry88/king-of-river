@@ -14,6 +14,11 @@ import type {
   GameProfile,
   LocationDefinition,
   Rarity,
+  RatingEntry,
+  RatingFilters,
+  RatingOrder,
+  RatingPeriod,
+  RatingSnapshot,
   WaterType,
 } from '../shared/game/types';
 
@@ -75,6 +80,21 @@ type CatalogStageProps = {
   locations: LocationDefinition[];
   fish: FishDefinition[];
   profile: GameProfile;
+};
+
+type RatingsStageProps = {
+  ratings: RatingSnapshot;
+  locations: LocationDefinition[];
+  fish: FishDefinition[];
+  profile: GameProfile;
+  actionPending: boolean;
+  onLoadRatings: (filters: RatingFilters) => void;
+  onClaimRatingReward: () => void;
+};
+
+type RatingFilterOption = {
+  id: string;
+  label: string;
 };
 
 type ShopGroupProps = {
@@ -194,7 +214,7 @@ const bottomTabs: BottomTabDefinition[] = [
     id: 'ratings',
     label: 'Ratings',
     icon: '/riverking/menu/ratings.webp',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'catalog',
@@ -237,6 +257,17 @@ const rarityLabels: Record<RarityFilter, string> = {
   mythic: 'Mythic',
   legendary: 'Legendary',
 };
+
+const ratingPeriodOptions: Array<{ id: RatingPeriod; label: string }> = [
+  { id: 'today', label: 'Today' },
+  { id: 'yesterday', label: 'Yesterday' },
+  { id: 'all', label: 'All time' },
+];
+
+const ratingOrderOptions: Array<{ id: RatingOrder; label: string }> = [
+  { id: 'desc', label: 'Best' },
+  { id: 'asc', label: 'Smallest' },
+];
 
 const bobberSize = 30;
 const bobberRadius = bobberSize / 2;
@@ -837,6 +868,8 @@ export const App = () => {
     selectBait,
     buyBaitPack,
     claimDailyReward,
+    loadRatings,
+    claimRatingReward,
   } = useGame();
   const [activeTab, setActiveTab] = useState<BottomTabId>('fishing');
 
@@ -908,6 +941,16 @@ export const App = () => {
             locations={catalog.locations}
             fish={catalog.fish}
             profile={profile}
+          />
+        ) : activeTab === 'ratings' ? (
+          <RatingsStage
+            ratings={snapshot.ratings}
+            locations={catalog.locations}
+            fish={catalog.fish}
+            profile={profile}
+            actionPending={actionPending}
+            onLoadRatings={loadRatings}
+            onClaimRatingReward={claimRatingReward}
           />
         ) : (
           <FishingStage
@@ -1341,6 +1384,291 @@ const CatchFlight = ({
     >
       <img src={fish.image} alt={catchRecord.fishName} />
     </div>
+  );
+};
+
+const RatingsStage = ({
+  ratings,
+  locations,
+  fish,
+  profile,
+  actionPending,
+  onLoadRatings,
+  onClaimRatingReward,
+}: RatingsStageProps) => {
+  const [filters, setFilters] = useState<RatingFilters>(ratings.filters);
+  const fishById = useMemo(() => buildFishById(fish), [fish]);
+  const locationIdsByFishId = useMemo(
+    () => buildLocationIdsByFishId(locations),
+    [locations]
+  );
+  const locationOptions = useMemo<RatingFilterOption[]>(() => {
+    return [
+      { id: 'all', label: 'All locations' },
+      ...locations.map((location) => ({
+        id: location.id,
+        label: location.name,
+      })),
+    ];
+  }, [locations]);
+  const fishOptions = useMemo<RatingFilterOption[]>(() => {
+    const availableFish = fish
+      .filter((entry) => {
+        if (filters.locationId === 'all') return true;
+        return (
+          locationIdsByFishId.get(entry.id)?.has(filters.locationId) ?? false
+        );
+      })
+      .sort((left, right) =>
+        left.name.localeCompare(right.name, 'en', { sensitivity: 'base' })
+      );
+
+    return [
+      { id: 'all', label: 'All fish' },
+      ...availableFish.map((entry) => ({
+        id: entry.id,
+        label: entry.name,
+      })),
+    ];
+  }, [filters.locationId, fish, locationIdsByFishId]);
+  const discoveredFishIds = useMemo(
+    () => new Set(profile.discoveredFishIds),
+    [profile.discoveredFishIds]
+  );
+
+  const updateFilters = (nextFilters: RatingFilters) => {
+    setFilters(nextFilters);
+    onLoadRatings(nextFilters);
+  };
+
+  const handleLocationSelect = (locationId: string) => {
+    const selectedFishLocationIds = locationIdsByFishId.get(filters.fishId);
+    const fishStillAvailable =
+      filters.fishId === 'all' ||
+      locationId === 'all' ||
+      Boolean(selectedFishLocationIds?.has(locationId));
+    updateFilters({
+      ...filters,
+      locationId,
+      fishId: fishStillAvailable ? filters.fishId : 'all',
+    });
+  };
+
+  const pendingCoins = ratings.rewardStatus.pendingCoins;
+
+  return (
+    <section className="stage-wrap ratings-stage-wrap">
+      <div className="ratings-stage">
+        <div className="ratings-header">
+          <div>
+            <span>Ratings</span>
+            <h1>Global</h1>
+          </div>
+          <div className="ratings-progress">
+            <span>Prize</span>
+            <strong>
+              {pendingCoins > 0 ? `${pendingCoins} coins` : 'None'}
+            </strong>
+          </div>
+        </div>
+
+        {pendingCoins > 0 ? (
+          <div className="rating-prize-card">
+            <div>
+              <span>Daily rating</span>
+              <strong>{`${pendingCoins} coins`}</strong>
+            </div>
+            <button
+              disabled={actionPending}
+              onClick={onClaimRatingReward}
+              type="button"
+            >
+              Claim
+            </button>
+          </div>
+        ) : null}
+
+        <div className="rating-filter-grid" aria-label="Rating filters">
+          <RatingFilterMenu
+            label="Period"
+            options={ratingPeriodOptions}
+            value={filters.period}
+            onSelect={(period) =>
+              updateFilters({
+                ...filters,
+                period: parseRatingPeriod(period),
+              })
+            }
+          />
+          <RatingFilterMenu
+            label="Order"
+            options={ratingOrderOptions}
+            value={filters.order}
+            onSelect={(order) =>
+              updateFilters({
+                ...filters,
+                order: parseRatingOrder(order),
+              })
+            }
+          />
+          <RatingFilterMenu
+            label="Location"
+            options={locationOptions}
+            value={filters.locationId}
+            onSelect={handleLocationSelect}
+          />
+          <RatingFilterMenu
+            label="Fish"
+            options={fishOptions}
+            value={filters.fishId}
+            onSelect={(fishId) =>
+              updateFilters({
+                ...filters,
+                fishId,
+              })
+            }
+          />
+        </div>
+
+        <div className="rating-count-row">
+          <span>{`${ratings.entries.length} shown`}</span>
+        </div>
+
+        <div className="rating-entry-list">
+          {ratings.entries.length > 0 ? (
+            ratings.entries.map((entry) => (
+              <RatingEntryCard
+                discovered={discoveredFishIds.has(entry.fishId)}
+                entry={entry}
+                fishImage={fishById.get(entry.fishId)?.image ?? null}
+                key={entry.catchId}
+              />
+            ))
+          ) : (
+            <div className="ratings-empty">No rating entries yet.</div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const RatingFilterMenu = ({
+  label,
+  options,
+  value,
+  onSelect,
+}: {
+  label: string;
+  options: RatingFilterOption[];
+  value: string;
+  onSelect: (value: string) => void;
+}) => {
+  const [open, setOpen] = useState(false);
+  const selectedOption =
+    options.find((option) => option.id === value) ?? options[0] ?? null;
+  const menuId = `rating-filter-${label.toLowerCase()}`;
+
+  return (
+    <div
+      className="rating-filter"
+      onBlur={(event) => {
+        const nextTarget = event.relatedTarget;
+        if (
+          !(nextTarget instanceof Node) ||
+          !event.currentTarget.contains(nextTarget)
+        ) {
+          setOpen(false);
+        }
+      }}
+    >
+      <span className="rating-filter-label">{label}</span>
+      <button
+        aria-controls={menuId}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        className="rating-filter-button"
+        onClick={() => setOpen((current) => !current)}
+        type="button"
+      >
+        <span>{selectedOption?.label ?? value}</span>
+        <span className="rating-filter-caret" aria-hidden="true">
+          ▾
+        </span>
+      </button>
+      {open ? (
+        <div className="rating-filter-menu" id={menuId} role="listbox">
+          {options.map((option) => {
+            const selected = option.id === value;
+
+            return (
+              <button
+                aria-selected={selected}
+                className={`rating-filter-option ${
+                  selected ? 'rating-filter-option-selected' : ''
+                }`}
+                key={option.id}
+                onClick={() => {
+                  onSelect(option.id);
+                  setOpen(false);
+                }}
+                role="option"
+                type="button"
+              >
+                <span className="rating-filter-check" aria-hidden="true">
+                  {selected ? '✓' : ''}
+                </span>
+                <span>{option.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const RatingEntryCard = ({
+  entry,
+  fishImage,
+  discovered,
+}: {
+  entry: RatingEntry;
+  fishImage: string | null;
+  discovered: boolean;
+}) => {
+  return (
+    <article className={`rating-entry-card rating-rarity-${entry.rarity}`}>
+      <div className="rating-rank-pill">{entry.rank}</div>
+      <div className="rating-fish-thumb">
+        {discovered && fishImage ? (
+          <img src={fishImage} alt={entry.fishName} />
+        ) : (
+          <span>?</span>
+        )}
+      </div>
+      <div className="rating-entry-copy">
+        <div className="rating-entry-title-row">
+          <h2>{entry.fishName}</h2>
+          <strong>{`${formatWeight(entry.weightKg)} kg`}</strong>
+        </div>
+        <p>
+          {[
+            entry.username,
+            entry.locationName,
+            formatRatingTime(entry.caughtAt),
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+        </p>
+        <div className="rating-entry-meta">
+          <span>{rarityLabels[entry.rarity]}</span>
+          {entry.prizeCoins ? (
+            <span>{`+${entry.prizeCoins} coins`}</span>
+          ) : null}
+        </div>
+      </div>
+    </article>
   );
 };
 
@@ -1830,6 +2158,31 @@ const buildLocationNamesByFishId = (
   return namesByFishId;
 };
 
+const buildLocationIdsByFishId = (
+  locations: LocationDefinition[]
+): Map<string, Set<string>> => {
+  const idsByFishId = new Map<string, Set<string>>();
+
+  for (const location of locations) {
+    for (const entry of location.fishWeights) {
+      const ids = idsByFishId.get(entry.fishId) ?? new Set<string>();
+      ids.add(location.id);
+      idsByFishId.set(entry.fishId, ids);
+    }
+  }
+
+  return idsByFishId;
+};
+
+const buildFishById = (fish: FishDefinition[]): Map<string, FishDefinition> => {
+  const fishById = new Map<string, FishDefinition>();
+  for (const entry of fish) {
+    fishById.set(entry.id, entry);
+  }
+
+  return fishById;
+};
+
 const isLocationUnlocked = (
   location: LocationDefinition,
   profile: GameProfile
@@ -1864,11 +2217,30 @@ const compareFishForCatalog = (
   return left.name.localeCompare(right.name, 'en', { sensitivity: 'base' });
 };
 
+const parseRatingPeriod = (value: string): RatingPeriod => {
+  return (
+    ratingPeriodOptions.find((option) => option.id === value)?.id ?? 'today'
+  );
+};
+
+const parseRatingOrder = (value: string): RatingOrder => {
+  return ratingOrderOptions.find((option) => option.id === value)?.id ?? 'desc';
+};
+
 const formatWeight = (weightKg: number): string => {
   return Number(weightKg.toFixed(2)).toLocaleString(undefined, {
     maximumFractionDigits: 2,
     minimumFractionDigits:
       weightKg < 10 && weightKg !== Math.round(weightKg) ? 2 : 0,
+  });
+};
+
+const formatRatingTime = (timestamp: number): string => {
+  return new Date(timestamp).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
   });
 };
 

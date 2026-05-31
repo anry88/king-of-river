@@ -143,6 +143,49 @@ export type DailyRewardStatus = {
   todayRewards: DailyRewardItem[];
 };
 
+export type RatingPeriod = 'today' | 'yesterday' | 'all';
+
+export type RatingOrder = 'desc' | 'asc';
+
+export type RatingFilters = {
+  period: RatingPeriod;
+  order: RatingOrder;
+  locationId: string;
+  fishId: string;
+};
+
+export type RatingEntry = {
+  rank: number;
+  catchId: string;
+  username: string;
+  fishId: string;
+  fishName: string;
+  locationId: string;
+  locationName: string;
+  rarity: Rarity;
+  weightKg: number;
+  caughtAt: number;
+  prizeCoins: number | null;
+};
+
+export type RatingRewardStatus = {
+  pendingCoins: number;
+  lastDistributedDate: string | null;
+};
+
+export type RatingSnapshot = {
+  filters: RatingFilters;
+  entries: RatingEntry[];
+  rewardStatus: RatingRewardStatus;
+};
+
+export const defaultRatingFilters: RatingFilters = {
+  period: 'today',
+  order: 'desc',
+  locationId: 'all',
+  fishId: 'all',
+};
+
 export type GameProfile = {
   version: 5;
   postId: string;
@@ -175,6 +218,7 @@ export type GameSnapshot = {
   profile: GameProfile;
   catalog: GameCatalog;
   dailyRewardStatus: DailyRewardStatus;
+  ratings: RatingSnapshot;
   message: string;
   lastCatch: CatchRecord | null;
 };

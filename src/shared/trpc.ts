@@ -1,6 +1,6 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import type { GameSnapshot } from './game/types';
+import type { GameSnapshot, RatingFilters, RatingSnapshot } from './game/types';
 
 type GameActions = {
   init: () => Promise<GameSnapshot>;
@@ -12,6 +12,8 @@ type GameActions = {
   selectBait: (baitId: string) => Promise<GameSnapshot>;
   buyBaitPack: (baitPackId: string) => Promise<GameSnapshot>;
   claimDailyReward: () => Promise<GameSnapshot>;
+  loadRatings: (filters: RatingFilters) => Promise<RatingSnapshot>;
+  claimRatingReward: () => Promise<GameSnapshot>;
 };
 
 export type TrpcContext = {
@@ -19,6 +21,13 @@ export type TrpcContext = {
 };
 
 const t = initTRPC.context<TrpcContext>().create();
+
+const ratingFiltersSchema = z.object({
+  period: z.enum(['today', 'yesterday', 'all']),
+  order: z.enum(['desc', 'asc']),
+  locationId: z.string().min(1),
+  fishId: z.string().min(1),
+});
 
 const publicProcedure = t.procedure.use(async (opts) => {
   try {
@@ -99,6 +108,14 @@ export const appRouter = t.router({
       }),
     claimDailyReward: publicProcedure.mutation(({ ctx }) => {
       return ctx.gameService.claimDailyReward();
+    }),
+    loadRatings: publicProcedure
+      .input(ratingFiltersSchema)
+      .query(({ ctx, input }) => {
+        return ctx.gameService.loadRatings(input);
+      }),
+    claimRatingReward: publicProcedure.mutation(({ ctx }) => {
+      return ctx.gameService.claimRatingReward();
     }),
   }),
 });

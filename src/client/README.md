@@ -5,11 +5,11 @@ The client package owns code that runs inside the Reddit iframe.
 ## Entrypoints
 
 - `splash.html` / `splash.tsx`: inline feed surface. Keep this small and avoid heavy game dependencies.
-- `game.html` / `game.tsx`: expanded game surface. This renders the fishing screen, top location and bait picker controls, caught-weight progression, fishing controls, the daily reward icon beside coins, the location/fish Catalog tab, and the Shop tab.
+- `game.html` / `game.tsx`: expanded game surface. This renders the fishing screen, top location and bait picker controls, caught-weight progression, fishing controls, the daily reward icon beside coins, the global Ratings tab, the location/fish Catalog tab, and the Shop tab.
 
 ## Supporting files
 
-- `hooks/useGame.ts`: wraps tRPC calls, local action state, client-owned bite/hook/landing timers, hidden pull taps, shop purchases, daily reward claims, and timeout handling.
+- `hooks/useGame.ts`: wraps tRPC calls, local action state, client-owned bite/hook/landing timers, hidden pull taps, shop purchases, daily reward claims, rating loads/claims, and timeout handling.
 - `trpcClient.ts`: creates the browser tRPC client.
 - `index.css`: Tailwind import plus shared game UI component classes.
 

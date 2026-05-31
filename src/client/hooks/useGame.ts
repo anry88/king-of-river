@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { trpc } from '../trpcClient';
-import type { ActiveCast, GameSnapshot } from '../../shared/game/types';
+import type {
+  ActiveCast,
+  GameSnapshot,
+  RatingFilters,
+} from '../../shared/game/types';
 
 type LoadState = 'loading' | 'ready' | 'error';
 
@@ -28,7 +32,10 @@ type LocalHookedTiming = {
   expiresAt: number;
 };
 
-const withTimeout = async <T,>(promise: Promise<T>, label: string): Promise<T> => {
+const withTimeout = async <T>(
+  promise: Promise<T>,
+  label: string
+): Promise<T> => {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
   const timeout = new Promise<T>((_, reject) => {
@@ -63,33 +70,64 @@ export const useGame = () => {
     stateRef.current = state;
   }, [state]);
 
-  const applyClientCastTiming = useCallback((snapshot: GameSnapshot): GameSnapshot => {
-    const activeCast = snapshot.profile.activeCast;
+  const applyClientCastTiming = useCallback(
+    (snapshot: GameSnapshot): GameSnapshot => {
+      const activeCast = snapshot.profile.activeCast;
 
-    if (!activeCast) {
+      if (!activeCast) {
+        localCastingTimingRef.current = null;
+        localHookedTimingRef.current = null;
+        return snapshot;
+      }
+
+      if (activeCast.stage === 'casting') {
+        localHookedTimingRef.current = null;
+        let timing = localCastingTimingRef.current;
+
+        if (timing?.castId !== activeCast.id) {
+          const hookReadyAt = Date.now() + activeCast.waitSeconds * 1000;
+          timing = {
+            castId: activeCast.id,
+            hookReadyAt,
+            hookExpiresAt: hookReadyAt + localReactionWindowMs,
+          };
+          localCastingTimingRef.current = timing;
+        }
+
+        const clientTimedActiveCast: ActiveCast = {
+          ...activeCast,
+          hookReadyAt: timing.hookReadyAt,
+          hookExpiresAt: timing.hookExpiresAt,
+        };
+
+        return {
+          ...snapshot,
+          profile: {
+            ...snapshot.profile,
+            activeCast: clientTimedActiveCast,
+          },
+        };
+      }
+
       localCastingTimingRef.current = null;
-      localHookedTimingRef.current = null;
-      return snapshot;
-    }
 
-    if (activeCast.stage === 'casting') {
-      localHookedTimingRef.current = null;
-      let timing = localCastingTimingRef.current;
+      if (!activeCast.challenge) {
+        return snapshot;
+      }
+
+      let timing = localHookedTimingRef.current;
 
       if (timing?.castId !== activeCast.id) {
-        const hookReadyAt = Date.now() + activeCast.waitSeconds * 1000;
         timing = {
           castId: activeCast.id,
-          hookReadyAt,
-          hookExpiresAt: hookReadyAt + localReactionWindowMs,
+          expiresAt: Date.now() + activeCast.challenge.durationMs,
         };
-        localCastingTimingRef.current = timing;
+        localHookedTimingRef.current = timing;
       }
 
       const clientTimedActiveCast: ActiveCast = {
         ...activeCast,
-        hookReadyAt: timing.hookReadyAt,
-        hookExpiresAt: timing.hookExpiresAt,
+        expiresAt: timing.expiresAt,
       };
 
       return {
@@ -99,37 +137,9 @@ export const useGame = () => {
           activeCast: clientTimedActiveCast,
         },
       };
-    }
-
-    localCastingTimingRef.current = null;
-
-    if (!activeCast.challenge) {
-      return snapshot;
-    }
-
-    let timing = localHookedTimingRef.current;
-
-    if (timing?.castId !== activeCast.id) {
-      timing = {
-        castId: activeCast.id,
-        expiresAt: Date.now() + activeCast.challenge.durationMs,
-      };
-      localHookedTimingRef.current = timing;
-    }
-
-    const clientTimedActiveCast: ActiveCast = {
-      ...activeCast,
-      expiresAt: timing.expiresAt,
-    };
-
-    return {
-      ...snapshot,
-      profile: {
-        ...snapshot.profile,
-        activeCast: clientTimedActiveCast,
-      },
-    };
-  }, []);
+    },
+    []
+  );
 
   const runAction = useCallback(
     async (action: () => Promise<GameSnapshot>, resetTaps: boolean) => {
@@ -140,7 +150,9 @@ export const useGame = () => {
       }));
 
       try {
-        const snapshot = applyClientCastTiming(await withTimeout(action(), 'Game action'));
+        const snapshot = applyClientCastTiming(
+          await withTimeout(action(), 'Game action')
+        );
         if (resetTaps) {
           tapCountRef.current = 0;
         }
@@ -152,7 +164,8 @@ export const useGame = () => {
           tapCount: resetTaps ? 0 : current.tapCount,
         }));
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Game action failed.';
+        const message =
+          error instanceof Error ? error.message : 'Game action failed.';
         setState((current) => ({
           ...current,
           loadState: current.snapshot ? 'ready' : 'error',
@@ -169,7 +182,10 @@ export const useGame = () => {
 
     const loadInitialState = async () => {
       try {
-        const loadedSnapshot = await withTimeout(trpc.game.init.query(), 'Game loading');
+        const loadedSnapshot = await withTimeout(
+          trpc.game.init.query(),
+          'Game loading'
+        );
         const snapshot = applyClientCastTiming(loadedSnapshot);
         if (cancelled) return;
 
@@ -185,7 +201,8 @@ export const useGame = () => {
       } catch (error) {
         if (cancelled) return;
 
-        const message = error instanceof Error ? error.message : 'Game loading failed.';
+        const message =
+          error instanceof Error ? error.message : 'Game loading failed.';
         setState((current) => ({
           ...current,
           loadState: 'error',
@@ -265,6 +282,38 @@ export const useGame = () => {
     void runAction(() => trpc.game.claimDailyReward.mutate(), false);
   }, [runAction]);
 
+  const claimRatingRewardAction = useCallback(() => {
+    void runAction(() => trpc.game.claimRatingReward.mutate(), false);
+  }, [runAction]);
+
+  const loadRatingsAction = useCallback(async (filters: RatingFilters) => {
+    try {
+      const ratings = await withTimeout(
+        trpc.game.loadRatings.query(filters),
+        'Ratings loading'
+      );
+      setState((current) => {
+        if (!current.snapshot) return current;
+
+        return {
+          ...current,
+          snapshot: {
+            ...current.snapshot,
+            ratings,
+          },
+          errorMessage: null,
+        };
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Ratings loading failed.';
+      setState((current) => ({
+        ...current,
+        errorMessage: message,
+      }));
+    }
+  }, []);
+
   const pullAction = useCallback(() => {
     const snapshot = stateRef.current.snapshot;
     const activeCast = snapshot?.profile.activeCast;
@@ -335,7 +384,10 @@ export const useGame = () => {
       const timeoutMs = Math.max(0, activeCast.hookExpiresAt - Date.now() + 40);
       const timeoutId = setTimeout(() => {
         const currentActiveCast = stateRef.current.snapshot?.profile.activeCast;
-        if (currentActiveCast?.id === activeCast.id && currentActiveCast.stage === 'casting') {
+        if (
+          currentActiveCast?.id === activeCast.id &&
+          currentActiveCast.stage === 'casting'
+        ) {
           expireCastLocally(activeCast.id);
         }
       }, timeoutMs);
@@ -347,7 +399,10 @@ export const useGame = () => {
       const timeoutMs = Math.max(0, activeCast.expiresAt - Date.now() + 40);
       const timeoutId = setTimeout(() => {
         const currentActiveCast = stateRef.current.snapshot?.profile.activeCast;
-        if (currentActiveCast?.id === activeCast.id && currentActiveCast.stage === 'hooked') {
+        if (
+          currentActiveCast?.id === activeCast.id &&
+          currentActiveCast.stage === 'hooked'
+        ) {
           expireCastLocally(activeCast.id);
         }
       }, timeoutMs);
@@ -356,7 +411,11 @@ export const useGame = () => {
     }
 
     return undefined;
-  }, [expireCastLocally, state.actionPending, state.snapshot?.profile.activeCast]);
+  }, [
+    expireCastLocally,
+    state.actionPending,
+    state.snapshot?.profile.activeCast,
+  ]);
 
   return {
     ...state,
@@ -366,6 +425,8 @@ export const useGame = () => {
     selectBait: selectBaitAction,
     buyBaitPack: buyBaitPackAction,
     claimDailyReward: claimDailyRewardAction,
+    loadRatings: loadRatingsAction,
+    claimRatingReward: claimRatingRewardAction,
     pull: pullAction,
   };
 };

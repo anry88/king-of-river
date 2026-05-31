@@ -12,11 +12,12 @@ The first Reddit version focuses on a short-session fishing loop:
 - hook a fish
 - pull through a hidden tap challenge before the fish escapes
 - save coins, XP, total caught weight, discoveries, and recent catches
+- compete in per-post global daily ratings for coin prizes
 - review unlocked locations and discovered fish in the catalog
 
 The architecture leaves explicit room for the RiverKing systems that make sense on Reddit:
 
-- per-post and per-subreddit leaderboards
+- broader per-subreddit leaderboards
 - scheduled tournaments
 - daily and weekly quests
 - fish collection achievements
