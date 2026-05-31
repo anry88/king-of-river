@@ -137,15 +137,18 @@ const assetPreloadImages = [
 const bobberSize = 30;
 const bobberRadius = bobberSize / 2;
 const bobberVisibleAboveWater = Math.round(bobberSize * 0.72);
+const bobberMinimumVisibleAboveWater = Math.round(bobberSize * 0.28);
+const bobberMaxDownOffset = bobberVisibleAboveWater - bobberMinimumVisibleAboveWater;
 const rigLineHeight = 36;
 const hookSize = 18;
 const rigWidth = 44;
 const rigCenterX = rigWidth / 2;
 const shorePosition = { x: 0.44, y: 0.56 };
 const idleFloatVisual = { offset: 0, xOffset: 0, tilt: 0, submerge: 0 };
-const castAnimationMinMs = 680;
-const castAnimationMaxMs = 980;
-const castAnimationDefaultMs = 820;
+const waitingFloatVisual = { offset: 4, xOffset: 0, tilt: 0, submerge: 0.45 };
+const castAnimationMinMs = 600;
+const castAnimationMaxMs = 840;
+const castAnimationDefaultMs = 700;
 const catchCooldownMs = 3000;
 const rodImageSize = { width: 1536, height: 1024 };
 const rodTipAnchor = { x: 0.07878, y: 0.04785 };
@@ -379,21 +382,24 @@ const useRiverKingRigMotion = (
   const tapping = activeCast?.stage === 'hooked';
   const shouldAnimateFloat = biting || tapping;
   const fightIntensity = tapping ? clamp(activeCast.challenge?.struggleIntensity ?? 0, 0, 1) : 0;
+  const isCurrentCastLanded = Boolean(activeCastKey) && landedCastKey === activeCastKey;
+  const waitingForBite = activeCast?.stage === 'casting' && isCurrentCastLanded && !biting;
+  const restingFloatVisual = waitingForBite ? waitingFloatVisual : idleFloatVisual;
 
   useEffect(() => {
     if (!shouldAnimateFloat) {
       const resetFrameId = window.requestAnimationFrame(() => {
         setFloatVisual((current) => {
           if (
-            current.offset === 0 &&
-            current.xOffset === 0 &&
-            current.tilt === 0 &&
-            current.submerge === 0
+            current.offset === restingFloatVisual.offset &&
+            current.xOffset === restingFloatVisual.xOffset &&
+            current.tilt === restingFloatVisual.tilt &&
+            current.submerge === restingFloatVisual.submerge
           ) {
             return current;
           }
 
-          return idleFloatVisual;
+          return restingFloatVisual;
         });
       });
 
@@ -469,22 +475,25 @@ const useRiverKingRigMotion = (
         window.cancelAnimationFrame(frameId);
       }
     };
-  }, [biting, fightIntensity, shouldAnimateFloat, tapping]);
+  }, [biting, fightIntensity, restingFloatVisual, shouldAnimateFloat, tapping]);
 
   const floatBasePx = {
     x: floatRel.x * w,
     y: floatRel.y * h,
   };
+  const isCastInWater = Boolean(activeCastKey) && (isCurrentCastLanded || biting || tapping);
+  const floatDisplayOffset = isCastInWater
+    ? Math.min(floatVisual.offset, bobberMaxDownOffset)
+    : floatVisual.offset;
   const floatPx = {
     x: floatBasePx.x + floatVisual.xOffset,
-    y: floatBasePx.y + floatVisual.offset,
+    y: floatBasePx.y + floatDisplayOffset,
   };
   const waterlineY = clamp(
     floatBasePx.y - bobberRadius + bobberVisibleAboveWater,
     0,
     Math.max(0, h)
   );
-  const isCastInWater = Boolean(activeCastKey) && (landedCastKey === activeCastKey || biting || tapping);
   const bobberBottom = floatPx.y + bobberRadius;
   const bobberHiddenHeight = clamp(bobberBottom - waterlineY, 0, bobberSize);
   const bobberClipPath =
