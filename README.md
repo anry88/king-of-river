@@ -17,7 +17,6 @@ Playtest subreddit:
 
 Source inspiration:
 
-- Local original: `/Users/hq-k14lcdcq7d/Documents/IdeaProjects/RiverKing`
 - GitHub target: [anry88/king-of-river](https://github.com/anry88/king-of-river)
 
 ## What Exists Now
