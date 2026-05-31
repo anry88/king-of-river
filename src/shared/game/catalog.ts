@@ -1,6 +1,7 @@
 import type {
   BaitDefinition,
   BaitPackDefinition,
+  DailyRewardSchedule,
   FishDefinition,
   GameCatalog,
   LocationDefinition,
@@ -474,6 +475,121 @@ export const baitPackCatalog: BaitPackDefinition[] = [
   },
 ];
 
+export const dailyRewardSchedule: DailyRewardSchedule = {
+  fresh: [
+    {
+      day: 1,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 8 },
+        { baitId: 'fresh-predator', quantity: 4 },
+      ],
+    },
+    {
+      day: 2,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 10 },
+        { baitId: 'fresh-predator', quantity: 6 },
+      ],
+    },
+    {
+      day: 3,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 12 },
+        { baitId: 'fresh-predator', quantity: 6 },
+      ],
+    },
+    {
+      day: 4,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 12 },
+        { baitId: 'fresh-predator', quantity: 8 },
+      ],
+    },
+    {
+      day: 5,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 13 },
+        { baitId: 'fresh-predator', quantity: 8 },
+      ],
+    },
+    {
+      day: 6,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 12 },
+        { baitId: 'fresh-predator', quantity: 10 },
+      ],
+    },
+    {
+      day: 7,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 13 },
+        { baitId: 'fresh-predator', quantity: 13 },
+      ],
+    },
+  ],
+  salt: [
+    {
+      day: 1,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 6 },
+        { baitId: 'fresh-predator', quantity: 6 },
+        { baitId: 'salt-predator', quantity: 4 },
+      ],
+    },
+    {
+      day: 2,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 8 },
+        { baitId: 'fresh-predator', quantity: 8 },
+        { baitId: 'salt-predator', quantity: 5 },
+      ],
+    },
+    {
+      day: 3,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 8 },
+        { baitId: 'fresh-predator', quantity: 8 },
+        { baitId: 'salt-predator', quantity: 6 },
+      ],
+    },
+    {
+      day: 4,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 8 },
+        { baitId: 'fresh-predator', quantity: 10 },
+        { baitId: 'salt-predator', quantity: 6 },
+      ],
+    },
+    {
+      day: 5,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 8 },
+        { baitId: 'fresh-predator', quantity: 10 },
+        { baitId: 'salt-predator', quantity: 6 },
+        { baitId: 'salt-peaceful', quantity: 2 },
+      ],
+    },
+    {
+      day: 6,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 8 },
+        { baitId: 'fresh-predator', quantity: 10 },
+        { baitId: 'salt-predator', quantity: 8 },
+        { baitId: 'salt-peaceful', quantity: 2 },
+      ],
+    },
+    {
+      day: 7,
+      items: [
+        { baitId: 'fresh-peaceful', quantity: 9 },
+        { baitId: 'fresh-predator', quantity: 11 },
+        { baitId: 'salt-peaceful', quantity: 3 },
+        { baitId: 'salt-predator', quantity: 9 },
+      ],
+    },
+  ],
+};
+
 export const locationCatalog: LocationDefinition[] = [
   {
     id: 'pond',
@@ -536,6 +652,7 @@ export const gameCatalog: GameCatalog = {
   locations: locationCatalog,
   baits: baitCatalog,
   baitPacks: baitPackCatalog,
+  dailyRewards: dailyRewardSchedule,
   rods: rodCatalog,
   fish: fishCatalog,
 };

@@ -11,6 +11,7 @@ type GameActions = {
   selectLocation: (locationId: string) => Promise<GameSnapshot>;
   selectBait: (baitId: string) => Promise<GameSnapshot>;
   buyBaitPack: (baitPackId: string) => Promise<GameSnapshot>;
+  claimDailyReward: () => Promise<GameSnapshot>;
 };
 
 export type TrpcContext = {
@@ -96,6 +97,9 @@ export const appRouter = t.router({
       .mutation(({ ctx, input }) => {
         return ctx.gameService.buyBaitPack(input.baitPackId);
       }),
+    claimDailyReward: publicProcedure.mutation(({ ctx }) => {
+      return ctx.gameService.claimDailyReward();
+    }),
   }),
 });
 

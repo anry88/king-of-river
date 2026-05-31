@@ -38,6 +38,18 @@ export type BaitPackDefinition = {
   items: BaitPackItem[];
 };
 
+export type DailyRewardItem = {
+  baitId: string;
+  quantity: number;
+};
+
+export type DailyRewardDay = {
+  day: number;
+  items: DailyRewardItem[];
+};
+
+export type DailyRewardSchedule = Record<WaterType, DailyRewardDay[]>;
+
 export type BaitInventoryItem = {
   baitId: string;
   quantity: number;
@@ -115,6 +127,14 @@ export type DailyRewardState = {
   streak: number;
 };
 
+export type DailyRewardStatus = {
+  available: boolean;
+  streak: number;
+  claimDay: number;
+  planWater: WaterType;
+  todayRewards: DailyRewardItem[];
+};
+
 export type GameProfile = {
   version: 4;
   postId: string;
@@ -137,6 +157,7 @@ export type GameCatalog = {
   locations: LocationDefinition[];
   baits: BaitDefinition[];
   baitPacks: BaitPackDefinition[];
+  dailyRewards: DailyRewardSchedule;
   rods: RodDefinition[];
   fish: FishDefinition[];
 };
@@ -144,6 +165,7 @@ export type GameCatalog = {
 export type GameSnapshot = {
   profile: GameProfile;
   catalog: GameCatalog;
+  dailyRewardStatus: DailyRewardStatus;
   message: string;
   lastCatch: CatchRecord | null;
 };

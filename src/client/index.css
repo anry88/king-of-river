@@ -249,6 +249,7 @@
   .setup-cell:disabled,
   .bait-option:disabled,
   .cast-action:disabled,
+  .daily-reward-button:disabled,
   .bottom-tab:disabled {
     cursor: not-allowed;
   }
@@ -578,7 +579,9 @@
 
   .stat-row {
     display: flex;
+    align-items: stretch;
     gap: 5px;
+    pointer-events: auto;
   }
 
   .stat-pill {
@@ -591,6 +594,53 @@
     padding: 7px 8px;
     text-align: center;
     backdrop-filter: blur(6px);
+  }
+
+  .daily-reward-button {
+    position: relative;
+    display: grid;
+    width: 46px;
+    min-width: 46px;
+    place-items: center;
+    border: 1px solid rgb(255 255 255 / 0.12);
+    border-radius: 8px;
+    background: rgb(6 16 13 / 0.5);
+    padding: 5px;
+    backdrop-filter: blur(6px);
+  }
+
+  .daily-reward-button img {
+    width: 34px;
+    height: 34px;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 8px rgb(0 0 0 / 0.35));
+  }
+
+  .daily-reward-button-ready {
+    border-color: rgb(238 187 78 / 0.7);
+    background: rgb(238 187 78 / 0.16);
+  }
+
+  .daily-reward-button:disabled:not(.daily-reward-button-ready) {
+    opacity: 0.72;
+  }
+
+  .daily-reward-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    display: grid;
+    width: 18px;
+    height: 18px;
+    place-items: center;
+    border: 1px solid rgb(255 255 255 / 0.52);
+    border-radius: 50%;
+    background: #e04a4a;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 950;
+    line-height: 1;
+    box-shadow: 0 6px 12px rgb(0 0 0 / 0.34);
   }
 
   .stat-pill span {
@@ -966,6 +1016,17 @@
   .stat-pill {
     min-width: 46px;
     padding: 6px;
+  }
+
+  .daily-reward-button {
+    width: 42px;
+    min-width: 42px;
+    padding: 5px;
+  }
+
+  .daily-reward-button img {
+    width: 30px;
+    height: 30px;
   }
 
   .stat-pill span {

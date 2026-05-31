@@ -8,7 +8,7 @@ The project starts from the official Devvit React template, but the starter coun
 - Hono and Devvit Web server APIs for the serverless runtime.
 - tRPC v11 for typed client/server game procedures.
 - Redis-backed save state scoped by Reddit post and username.
-- Shared TypeScript catalog/types for fish, locations, baits, bait packs, rods, casts, challenges, and catch records.
+- Shared TypeScript catalog/types for fish, locations, baits, bait packs, daily rewards, rods, casts, challenges, and catch records.
 - RiverKing source assets reused for the first playable Reddit surface.
 
 Playtest subreddit:
@@ -29,7 +29,7 @@ Source inspiration:
 - Service orchestration in `src/server/services/gameService.ts`.
 - Redis persistence in `src/server/storage/gameRepository.ts`.
 - Shared game catalog and DTOs in `src/shared/game/`.
-- First playable screen with `Pond`, a compact bait picker for four base baits, original RiverKing location/fish/menu assets, and a Shop tab with six RiverKing bait packs.
+- First playable screen with `Pond`, a compact bait picker for four base baits, original RiverKing location/fish/menu assets, daily bait rewards, and a Shop tab with six RiverKing bait packs.
 - Moderator menu action to create a custom King of River post.
 - Documentation map matching the original RiverKing repository style.
 
@@ -61,8 +61,9 @@ flowchart LR
 4. Cast a line with an in-stock bait that matches the current location water.
 5. Hook a fish before the hook window expires.
 6. Pull with a hidden tap goal before the fish escapes.
-7. Buy RiverKing bait packs in the shop with coins.
-8. Save coins, bait inventory, XP, discoveries, and recent catches in Redis.
+7. Claim the RiverKing-style daily bait reward from the daily icon next to coins.
+8. Buy RiverKing bait packs in the shop with coins.
+9. Save coins, bait inventory, XP, discoveries, daily reward streaks, and recent catches in Redis.
 
 ## Commands
 
@@ -97,7 +98,7 @@ Devvit commands:
 
 ## Roadmap
 
-- Add daily rewards, per-post leaderboards, and tournament windows.
+- Add per-post leaderboards and tournament windows.
 - Add quest and achievement services.
 - Add club/event data structures adapted to Reddit communities.
 - Add additional RiverKing locations and lightweight animations.

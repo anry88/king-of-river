@@ -3,10 +3,12 @@ import {
   defaultBaitId,
   defaultLocationId,
   defaultRodId,
+  dailyRewardSchedule,
   findBait,
   findBaitPack,
   findFish,
   findLocation,
+  locationCatalog,
 } from '../../shared/game/catalog';
 import type {
   ActiveCast,
@@ -14,6 +16,8 @@ import type {
   BaitInventoryItem,
   BaitPackItem,
   CatchRecord,
+  DailyRewardItem,
+  DailyRewardStatus,
   FishDefinition,
   GameProfile,
   HookChallenge,
@@ -28,6 +32,9 @@ const biteMinWaitSeconds = 5;
 const biteMaxWaitSeconds = 30;
 const reactionWindowMs = 5000;
 const serverActiveCastStaleMs = 10 * 60 * 1000;
+const dailyRewardTimeZone = 'Europe/Belgrade';
+const dailyRewardMaxDay = 7;
+const dayMs = 24 * 60 * 60 * 1000;
 const pondCastArea = {
   minX: 0.08,
   maxX: 0.72,
@@ -116,6 +123,53 @@ export const buyBaitPack = (
     coins: profile.coins - baitPack.priceCoins,
     baitInventory: mergeBaitInventory(profile.baitInventory, baitPack.items),
     updatedAt: now,
+  };
+};
+
+export const createDailyRewardStatus = (
+  profile: GameProfile,
+  now: number
+): DailyRewardStatus => {
+  const planWater = dailyRewardPlanWater(profile);
+  const available = canClaimDailyReward(profile, now);
+  const claimStreak = available
+    ? nextDailyRewardStreak(profile, now)
+    : Math.max(1, profile.dailyReward.streak);
+  const claimDay = dailyRewardDay(claimStreak);
+
+  return {
+    available,
+    streak: profile.dailyReward.streak,
+    claimDay,
+    planWater,
+    todayRewards: dailyRewardsForDay(planWater, claimDay),
+  };
+};
+
+export const claimDailyReward = (
+  profile: GameProfile,
+  now: number
+): { profile: GameProfile; rewards: DailyRewardItem[]; claimDay: number } => {
+  const status = createDailyRewardStatus(profile, now);
+
+  if (!status.available) {
+    throw new GameRuleError('Daily reward already claimed.');
+  }
+
+  const streak = nextDailyRewardStreak(profile, now);
+
+  return {
+    profile: {
+      ...profile,
+      baitInventory: mergeBaitInventory(profile.baitInventory, status.todayRewards),
+      dailyReward: {
+        lastClaimedAt: now,
+        streak,
+      },
+      updatedAt: now,
+    },
+    rewards: status.todayRewards,
+    claimDay: status.claimDay,
   };
 };
 
@@ -307,9 +361,75 @@ export const selectBait = (
   };
 };
 
+const canClaimDailyReward = (profile: GameProfile, now: number): boolean => {
+  const lastClaimedAt = profile.dailyReward.lastClaimedAt;
+  if (lastClaimedAt === null) return true;
+
+  return localDateKey(lastClaimedAt) !== localDateKey(now);
+};
+
+const nextDailyRewardStreak = (profile: GameProfile, now: number): number => {
+  const lastClaimedAt = profile.dailyReward.lastClaimedAt;
+  if (lastClaimedAt === null) return 1;
+
+  return localDateKey(lastClaimedAt) === localDateKey(now - dayMs)
+    ? profile.dailyReward.streak + 1
+    : 1;
+};
+
+const dailyRewardDay = (streak: number): number => {
+  return Math.min(dailyRewardMaxDay, Math.max(1, streak));
+};
+
+const dailyRewardPlanWater = (profile: GameProfile): WaterType => {
+  const saltUnlocked = locationCatalog.some((location) => {
+    return location.water === 'salt' && location.unlockLevel <= profile.level;
+  });
+
+  return saltUnlocked ? 'salt' : 'fresh';
+};
+
+const dailyRewardsForDay = (water: WaterType, day: number): DailyRewardItem[] => {
+  const plan = dailyRewardSchedule[water];
+  const fallbackRewards = plan[0];
+  if (!fallbackRewards) {
+    throw new GameRuleError('Daily reward plan is empty.');
+  }
+
+  const rewards = plan.find((entry) => entry.day === day) ?? fallbackRewards;
+
+  return rewards.items.map((item) => ({ ...item }));
+};
+
+const dailyDateFormatter = new Intl.DateTimeFormat('en-US', {
+  day: '2-digit',
+  month: '2-digit',
+  timeZone: dailyRewardTimeZone,
+  year: 'numeric',
+});
+
+const localDateKey = (timestamp: number): string => {
+  const parts = dailyDateFormatter.formatToParts(new Date(timestamp));
+  let day = '';
+  let month = '';
+  let year = '';
+
+  for (const part of parts) {
+    if (part.type === 'day') {
+      day = part.value;
+    } else if (part.type === 'month') {
+      month = part.value;
+    } else if (part.type === 'year') {
+      year = part.value;
+    }
+  }
+
+  return `${year}-${month}-${day}`;
+};
+
 const mergeBaitInventory = (
   inventory: BaitInventoryItem[],
-  items: BaitPackItem[]
+  items: (BaitPackItem | DailyRewardItem)[]
 ): BaitInventoryItem[] => {
   const quantitiesByBaitId = new Map<string, number>();
 

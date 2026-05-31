@@ -2,6 +2,8 @@ import { gameCatalog } from '../../shared/game/catalog';
 import type { GameSnapshot } from '../../shared/game/types';
 import {
   buyBaitPack,
+  claimDailyReward,
+  createDailyRewardStatus,
   createInitialProfile,
   expireActiveCast,
   expireCastById,
@@ -22,6 +24,7 @@ export type GameService = {
   selectLocation: (locationId: string) => Promise<GameSnapshot>;
   selectBait: (baitId: string) => Promise<GameSnapshot>;
   buyBaitPack: (baitPackId: string) => Promise<GameSnapshot>;
+  claimDailyReward: () => Promise<GameSnapshot>;
 };
 
 export const createGameService = (
@@ -49,23 +52,39 @@ export const createGameService = (
     message: string
   ): Promise<GameSnapshot> => {
     await repository.saveProfile(profile);
+    return createSnapshot(profile, message);
+  };
+
+  const createSnapshot = (
+    profile: Awaited<ReturnType<typeof loadProfile>>,
+    message: string
+  ): GameSnapshot => {
     return {
       profile,
       catalog: gameCatalog,
+      dailyRewardStatus: createDailyRewardStatus(profile, Date.now()),
       message,
       lastCatch: profile.catches[0] ?? null,
     };
   };
 
+  const formatDailyRewardMessage = (
+    result: ReturnType<typeof claimDailyReward>
+  ): string => {
+    const rewardList = result.rewards
+      .map((item) => {
+        const bait = gameCatalog.baits.find((entry) => entry.id === item.baitId);
+        return `${bait?.displayName ?? item.baitId} x${item.quantity}`;
+      })
+      .join(', ');
+
+    return `Daily reward claimed: ${rewardList}.`;
+  };
+
   return {
     init: async () => {
       const profile = await loadProfile();
-      return {
-        profile,
-        catalog: gameCatalog,
-        message: '',
-        lastCatch: profile.catches[0] ?? null,
-      };
+      return createSnapshot(profile, '');
     },
     startCast: async () => {
       const profile = await loadProfile();
@@ -99,6 +118,11 @@ export const createGameService = (
     buyBaitPack: async (baitPackId) => {
       const profile = await loadProfile();
       return saveSnapshot(buyBaitPack(profile, baitPackId, Date.now()), 'Bait pack purchased.');
+    },
+    claimDailyReward: async () => {
+      const profile = await loadProfile();
+      const result = claimDailyReward(profile, Date.now());
+      return saveSnapshot(result.profile, formatDailyRewardMessage(result));
     },
   };
 };

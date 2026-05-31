@@ -4,13 +4,13 @@ Pure game rules live here. Domain code should not import Devvit, Hono, Redis, Re
 
 ## Current module
 
-- `fishing.ts`: creates profiles, starts casts, applies bait-weighted fish selection, resolves hook and hidden tap challenges, computes rewards, buys bait packs, and updates progression.
+- `fishing.ts`: creates profiles, starts casts, applies bait-weighted fish selection, resolves hook and hidden tap challenges, computes rewards, buys bait packs, claims daily bait rewards, and updates progression.
 
 ## Current fishing rule
 
 The starter `Pond` pool uses the original RiverKing fish weights. Location water type hard-gates usable bait, so sea bait cannot be cast in the freshwater `Pond`. Predator bait type changes fish weights, but it does not remove fish from the pool.
 
-The client owns the visible bite wait, hook reaction, landing timeout, and post-cycle cooldown clocks so Reddit/Devvit network latency does not shorten player-facing windows. The domain still creates active casts, consumes one bait per cast, picks fish, creates hidden tap goals, resolves rewards, adds purchased bait-pack contents to inventory, and clears casts requested by the client timeout path.
+The client owns the visible bite wait, hook reaction, landing timeout, and post-cycle cooldown clocks so Reddit/Devvit network latency does not shorten player-facing windows. The domain still creates active casts, consumes one bait per cast, picks fish, creates hidden tap goals, resolves rewards, adds purchased or daily reward bait contents to inventory, tracks daily streaks, and clears casts requested by the client timeout path.
 
 ## Boundary
 

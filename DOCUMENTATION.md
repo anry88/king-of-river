@@ -41,11 +41,11 @@ king-of-river:post:{postId}:player:{username}
 The saved profile contains:
 
 - player coins, XP, level, selected location, selected bait, and selected rod
-- consumable bait inventory seeded with starter freshwater bait and expanded through shop purchases
+- consumable bait inventory seeded with starter freshwater bait and expanded through shop purchases or daily rewards
 - discovered fish IDs
 - recent catch records
 - active cast state
-- daily reward placeholder state for the next product pass
+- daily reward last-claim timestamp and streak state
 
 ## Current tRPC Surface
 
@@ -57,6 +57,7 @@ The saved profile contains:
 - `game.selectLocation`: switch unlocked locations and clear active cast state.
 - `game.selectBait`: switch the active bait and clear active cast state.
 - `game.buyBaitPack`: spend coins on a RiverKing bait pack and add its contents to inventory.
+- `game.claimDailyReward`: claim the once-per-local-day RiverKing bait reward and add it to inventory.
 
 ## Current Game Surface
 
@@ -71,6 +72,7 @@ The first playable screen mirrors the Android RiverKing fishing surface at a sma
 - hidden landing tap goals with timeout-based local escapes
 - active Fishing and Shop tabs; Ratings and Catalog remain placeholders
 - six basic RiverKing bait packs split into freshwater and saltwater S/M/L groups
+- a daily reward icon beside coins that claims the RiverKing seven-day bait schedule; boost-lure slots from the original schedule are converted into extra base bait quantities
 
 ## Design Rules
 

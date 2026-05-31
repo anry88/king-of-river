@@ -9,6 +9,7 @@ import type {
   BaitDefinition,
   BaitPackDefinition,
   CatchRecord,
+  DailyRewardStatus,
   FishDefinition,
   GameProfile,
   LocationDefinition,
@@ -43,21 +44,25 @@ type FishingStageProps = {
   lastCatch: CatchRecord | null;
   selectedLocation: LocationDefinition | null;
   profile: GameProfile;
+  dailyRewardStatus: DailyRewardStatus;
   message: string;
   errorMessage: string | null;
   onStartCast: () => void;
   onHook: () => void;
   onPull: () => void;
+  onClaimDailyReward: () => void;
 };
 
 type ShopStageProps = {
   packs: BaitPackDefinition[];
   baits: BaitDefinition[];
   profile: GameProfile;
+  dailyRewardStatus: DailyRewardStatus;
   actionPending: boolean;
   message: string;
   errorMessage: string | null;
   onBuyBaitPack: (baitPackId: string) => void;
+  onClaimDailyReward: () => void;
 };
 
 type ShopGroupProps = {
@@ -94,6 +99,12 @@ type ActionControlsProps = {
 type StatPillProps = {
   label: string;
   value: string;
+};
+
+type DailyRewardButtonProps = {
+  status: DailyRewardStatus;
+  disabled: boolean;
+  onClaim: () => void;
 };
 
 type CatchFlightProps = {
@@ -173,6 +184,7 @@ const assetPreloadImages = [
   '/riverking/baits/brook_minnow.webp',
   '/riverking/baits/seaweed_strand.webp',
   '/riverking/baits/squid_rings.webp',
+  '/riverking/inline_commands/daily.png',
 ];
 
 const bobberSize = 30;
@@ -699,6 +711,7 @@ export const App = () => {
     selectLocation,
     selectBait,
     buyBaitPack,
+    claimDailyReward,
   } = useGame();
   const [activeTab, setActiveTab] = useState<BottomTabId>('fishing');
 
@@ -721,6 +734,7 @@ export const App = () => {
     catalog.baits[0] ??
     null;
   const lastCatch = snapshot.lastCatch;
+  const dailyRewardStatus = snapshot.dailyRewardStatus;
   const caughtFish =
     lastCatch ? catalog.fish.find((fish) => fish.id === lastCatch.fishId) ?? null : null;
 
@@ -748,10 +762,12 @@ export const App = () => {
             packs={catalog.baitPacks}
             baits={catalog.baits}
             profile={profile}
+            dailyRewardStatus={dailyRewardStatus}
             actionPending={actionPending}
             message={message}
             errorMessage={errorMessage}
             onBuyBaitPack={buyBaitPack}
+            onClaimDailyReward={claimDailyReward}
           />
         ) : (
           <FishingStage
@@ -763,11 +779,13 @@ export const App = () => {
             lastCatch={lastCatch}
             selectedLocation={selectedLocation}
             profile={profile}
+            dailyRewardStatus={dailyRewardStatus}
             message={message}
             errorMessage={errorMessage}
             onStartCast={startCast}
             onHook={hook}
             onPull={pull}
+            onClaimDailyReward={claimDailyReward}
           />
         )}
 
@@ -897,11 +915,13 @@ const FishingStage = ({
   lastCatch,
   selectedLocation,
   profile,
+  dailyRewardStatus,
   message,
   errorMessage,
   onStartCast,
   onHook,
   onPull,
+  onClaimDailyReward,
 }: FishingStageProps) => {
   const backgroundImage = selectedLocation?.image ?? '/riverking/backgrounds/pond.webp';
   const outcomeMessage = errorMessage ?? message;
@@ -995,6 +1015,11 @@ const FishingStage = ({
             <span />
           )}
           <div className="stat-row">
+            <DailyRewardButton
+              status={dailyRewardStatus}
+              disabled={actionPending}
+              onClaim={onClaimDailyReward}
+            />
             <StatPill label="Coins" value={String(profile.coins)} />
           </div>
         </div>
@@ -1105,12 +1130,18 @@ const ShopStage = ({
   packs,
   baits,
   profile,
+  dailyRewardStatus,
   actionPending,
   message,
   errorMessage,
   onBuyBaitPack,
+  onClaimDailyReward,
 }: ShopStageProps) => {
-  const outcomeMessage = errorMessage ?? (message === 'Bait pack purchased.' ? message : '');
+  const infoMessage =
+    message === 'Bait pack purchased.' || message.startsWith('Daily reward claimed:')
+      ? message
+      : '';
+  const outcomeMessage = errorMessage ?? infoMessage;
 
   return (
     <section className="stage-wrap shop-stage-wrap">
@@ -1120,7 +1151,14 @@ const ShopStage = ({
             <span>Shop</span>
             <h1>Bait Packs</h1>
           </div>
-          <StatPill label="Coins" value={profile.coins.toLocaleString()} />
+          <div className="stat-row">
+            <DailyRewardButton
+              status={dailyRewardStatus}
+              disabled={actionPending}
+              onClaim={onClaimDailyReward}
+            />
+            <StatPill label="Coins" value={profile.coins.toLocaleString()} />
+          </div>
         </div>
 
         {outcomeMessage ? <div className="shop-message">{outcomeMessage}</div> : null}
@@ -1311,6 +1349,24 @@ const StatPill = ({ label, value }: StatPillProps) => {
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+};
+
+const DailyRewardButton = ({ status, disabled, onClaim }: DailyRewardButtonProps) => {
+  const title = status.available ? 'Claim daily reward' : 'Daily reward claimed';
+
+  return (
+    <button
+      aria-label={title}
+      className={`daily-reward-button ${status.available ? 'daily-reward-button-ready' : ''}`}
+      disabled={disabled || !status.available}
+      onClick={onClaim}
+      title={title}
+      type="button"
+    >
+      <img src="/riverking/inline_commands/daily.png" alt="" />
+      {status.available ? <span className="daily-reward-badge">!</span> : null}
+    </button>
   );
 };
 

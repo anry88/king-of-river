@@ -261,6 +261,10 @@ export const useGame = () => {
     [runAction]
   );
 
+  const claimDailyRewardAction = useCallback(() => {
+    void runAction(() => trpc.game.claimDailyReward.mutate(), false);
+  }, [runAction]);
+
   const pullAction = useCallback(() => {
     const snapshot = stateRef.current.snapshot;
     const activeCast = snapshot?.profile.activeCast;
@@ -361,6 +365,7 @@ export const useGame = () => {
     selectLocation: selectLocationAction,
     selectBait: selectBaitAction,
     buyBaitPack: buyBaitPackAction,
+    claimDailyReward: claimDailyRewardAction,
     pull: pullAction,
   };
 };
