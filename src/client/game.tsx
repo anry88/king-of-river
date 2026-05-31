@@ -146,9 +146,10 @@ const rigCenterX = rigWidth / 2;
 const shorePosition = { x: 0.44, y: 0.56 };
 const idleFloatVisual = { offset: 0, xOffset: 0, tilt: 0, submerge: 0 };
 const waitingFloatVisual = { offset: 4, xOffset: 0, tilt: 0, submerge: 0.45 };
-const castAnimationMinMs = 600;
-const castAnimationMaxMs = 840;
-const castAnimationDefaultMs = 700;
+const castAnimationWaitFactorMs = 85;
+const castAnimationMinMs = 420;
+const castAnimationMaxMs = 620;
+const castAnimationDefaultMs = 520;
 const catchCooldownMs = 3000;
 const rodImageSize = { width: 1536, height: 1024 };
 const rodTipAnchor = { x: 0.07878, y: 0.04785 };
@@ -230,23 +231,31 @@ const useStageSize = (stageRef: RefObject<HTMLDivElement | null>): StageSize => 
   return size;
 };
 
-const useCooldownActive = (availableAt: number): boolean => {
+const useCooldownRemaining = (availableAt: number): number => {
   const [cooldownNow, setCooldownNow] = useState(() => Date.now());
-  const active = availableAt > cooldownNow;
+  const remainingMs = Math.max(0, availableAt - cooldownNow);
 
   useEffect(() => {
-    if (availableAt <= cooldownNow) {
+    const timeoutId = window.setTimeout(() => {
+      setCooldownNow(Date.now());
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [availableAt]);
+
+  useEffect(() => {
+    if (remainingMs <= 0) {
       return undefined;
     }
 
     const timeoutId = window.setTimeout(() => {
       setCooldownNow(Date.now());
-    }, Math.max(0, availableAt - Date.now() + 20));
+    }, Math.min(250, remainingMs + 20));
 
     return () => window.clearTimeout(timeoutId);
-  }, [availableAt, cooldownNow]);
+  }, [availableAt, remainingMs]);
 
-  return active;
+  return remainingMs;
 };
 
 const useRiverKingRigMotion = (
@@ -320,7 +329,7 @@ const useRiverKingRigMotion = (
     const relDistanceY = Math.abs(to.y - from.y);
     const arcHeight = clamp(relDistanceY * 0.75, 0.015, 0.08);
     const durationMs = clamp(
-      activeCast?.waitSeconds ? activeCast.waitSeconds * 120 : castAnimationDefaultMs,
+      activeCast?.waitSeconds ? activeCast.waitSeconds * castAnimationWaitFactorMs : castAnimationDefaultMs,
       castAnimationMinMs,
       castAnimationMaxMs
     );
@@ -674,8 +683,8 @@ export const App = () => {
 
   return (
     <main className="rk-shell">
-      <AssetPreloads />
       <section className="rk-screen">
+        <AssetPreloads images={catalog.fish.map((fish) => fish.image)} />
         <SetupBar
           baits={catalog.baits}
           profile={profile}
@@ -708,10 +717,12 @@ export const App = () => {
   );
 };
 
-const AssetPreloads = () => {
+const AssetPreloads = ({ images = [] }: { images?: string[] }) => {
+  const preloadImages = [...new Set([...assetPreloadImages, ...images])];
+
   return (
     <div className="asset-preloads" aria-hidden="true">
-      {assetPreloadImages.map((src) => (
+      {preloadImages.map((src) => (
         <img key={src} src={src} alt="" />
       ))}
     </div>
@@ -820,9 +831,29 @@ const FishingStage = ({
   const now = useCastClock(activeCast);
   const stageRef = useRef<HTMLDivElement>(null);
   const stageSize = useStageSize(stageRef);
+  const previousActiveCastIdRef = useRef<string | null>(null);
+  const [localCycleCooldownUntil, setLocalCycleCooldownUntil] = useState(0);
   const rigMotion = useRiverKingRigMotion(stageSize, activeCast, now);
-  const nextCastAvailableAt = lastCatch ? lastCatch.caughtAt + catchCooldownMs : 0;
-  const castCooldownActive = useCooldownActive(nextCastAvailableAt);
+  const nextCastAvailableAt = Math.max(
+    lastCatch ? lastCatch.caughtAt + catchCooldownMs : 0,
+    localCycleCooldownUntil
+  );
+  const castCooldownRemainingMs = useCooldownRemaining(nextCastAvailableAt);
+  const castCooldownActive = castCooldownRemainingMs > 0;
+
+  useEffect(() => {
+    if (activeCast) {
+      previousActiveCastIdRef.current = activeCast.id;
+      return;
+    }
+
+    if (!previousActiveCastIdRef.current) {
+      return;
+    }
+
+    previousActiveCastIdRef.current = null;
+    setLocalCycleCooldownUntil(Date.now() + catchCooldownMs);
+  }, [activeCast]);
 
   const rodGeometry = useMemo(
     () =>
@@ -995,18 +1026,18 @@ const ActionControls = ({
   if (!activeCast) {
     return (
       <button
-        className="cast-action"
+        className={`cast-action ${castCooldownActive ? 'cast-action-cooldown' : ''}`}
         disabled={actionPending || castCooldownActive}
         onClick={onStartCast}
         type="button"
       >
-        Cast
+        {castCooldownActive ? 'Waiting' : 'Cast'}
       </button>
     );
   }
 
   if (activeCast.stage === 'casting') {
-    const hookReady = now >= activeCast.hookReadyAt;
+    const hookReady = now >= activeCast.hookReadyAt && now <= activeCast.hookExpiresAt;
 
     return (
       <button

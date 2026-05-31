@@ -3,6 +3,7 @@ import type { GameSnapshot } from '../../shared/game/types';
 import {
   createInitialProfile,
   expireActiveCast,
+  expireCastById,
   finishCast,
   hookCast,
   selectBait,
@@ -14,8 +15,9 @@ import type { GameRepository, PlayerIdentity } from '../storage/gameRepository';
 export type GameService = {
   init: () => Promise<GameSnapshot>;
   startCast: () => Promise<GameSnapshot>;
-  hook: () => Promise<GameSnapshot>;
+  hook: (reactionSeconds: number) => Promise<GameSnapshot>;
   finishCast: (taps: number) => Promise<GameSnapshot>;
+  expireCast: (castId: string) => Promise<GameSnapshot>;
   selectLocation: (locationId: string) => Promise<GameSnapshot>;
   selectBait: (baitId: string) => Promise<GameSnapshot>;
 };
@@ -67,9 +69,9 @@ export const createGameService = (
       const profile = await loadProfile();
       return saveSnapshot(startCast(profile, Date.now()), '');
     },
-    hook: async () => {
+    hook: async (reactionSeconds) => {
       const profile = await loadProfile();
-      const result = hookCast(profile, Date.now());
+      const result = hookCast(profile, Date.now(), reactionSeconds);
       return saveSnapshot(result.profile, result.hooked ? '' : 'The fish got away.');
     },
     finishCast: async (taps) => {
@@ -79,6 +81,10 @@ export const createGameService = (
         ? `Caught: ${result.catchRecord?.fishName ?? 'fish'}.`
         : 'The fish got away.';
       return saveSnapshot(result.profile, message);
+    },
+    expireCast: async (castId) => {
+      const profile = await loadProfile();
+      return saveSnapshot(expireCastById(profile, castId, Date.now()), 'The fish got away.');
     },
     selectLocation: async (locationId) => {
       const profile = await loadProfile();

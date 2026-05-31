@@ -23,6 +23,7 @@ const maxRecentCatches = 12;
 const biteMinWaitSeconds = 5;
 const biteMaxWaitSeconds = 30;
 const reactionWindowMs = 5000;
+const serverActiveCastStaleMs = 10 * 60 * 1000;
 const pondCastArea = {
   minX: 0.08,
   maxX: 0.72,
@@ -118,11 +119,7 @@ export const expireActiveCast = (profile: GameProfile, now: number): GameProfile
   const activeCast = profile.activeCast;
   if (!activeCast) return profile;
 
-  const castingExpired = activeCast.stage === 'casting' && now > activeCast.hookExpiresAt;
-  const hookedExpired =
-    activeCast.stage === 'hooked' && activeCast.expiresAt !== null && now > activeCast.expiresAt;
-
-  if (!castingExpired && !hookedExpired) {
+  if (now <= activeCast.startedAt + serverActiveCastStaleMs) {
     return profile;
   }
 
@@ -133,18 +130,32 @@ export const expireActiveCast = (profile: GameProfile, now: number): GameProfile
   };
 };
 
-export const hookCast = (profile: GameProfile, now: number): HookCastResult => {
+export const expireCastById = (
+  profile: GameProfile,
+  castId: string,
+  now: number
+): GameProfile => {
+  const activeCast = profile.activeCast;
+  if (!activeCast || activeCast.id !== castId) return profile;
+
+  return {
+    ...profile,
+    activeCast: null,
+    updatedAt: now,
+  };
+};
+
+export const hookCast = (
+  profile: GameProfile,
+  now: number,
+  clientReactionSeconds: number
+): HookCastResult => {
   const activeCast = requireActiveCast(profile.activeCast, 'casting');
   const location = requireUnlockedLocation(profile, activeCast.locationId);
   const bait = requireBait(activeCast.baitId);
+  const reactionSeconds = Math.min(30, Math.max(0, clientReactionSeconds));
 
-  if (now < activeCast.hookReadyAt) {
-    throw new GameRuleError('No bite yet.');
-  }
-
-  const reactionSeconds = Math.max(0, (now - activeCast.hookReadyAt) / 1000);
-
-  if (now > activeCast.hookExpiresAt || !isHookSuccessful(location, reactionSeconds)) {
+  if (!isHookSuccessful(location, reactionSeconds)) {
     return {
       profile: {
         ...profile,
@@ -186,7 +197,7 @@ export const finishCast = (
     throw new GameRuleError('No hooked fish is ready to land.');
   }
 
-  const success = taps >= activeCast.challenge.tapGoal && now <= activeCast.expiresAt;
+  const success = taps >= activeCast.challenge.tapGoal;
 
   if (!success) {
     return {

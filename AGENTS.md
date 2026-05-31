@@ -68,6 +68,7 @@ You are writing a Devvit web application that will be executed on Reddit.com.
 
 - Devvit Web server endpoints must start with `/api/`; tRPC is mounted at `/api/trpc`.
 - REST `/api/health` and `/api/catalog` are diagnostics only; gameplay should go through tRPC.
+- Bite wait, hook reaction, landing timeout, and post-cycle cooldown clocks are client-owned so Devvit network latency does not shorten the visible windows. The server still persists the active cast, picks fish, resolves rewards, and accepts `game.expireCast` when a local timeout ends a cycle.
 
 ## Frontend Rules
 

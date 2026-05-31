@@ -50,8 +50,9 @@ The saved profile contains:
 
 - `game.init`: load or create the player profile.
 - `game.startCast`: create an active cast for the selected location.
-- `game.hook`: reveal the hooked fish and challenge.
+- `game.hook`: reveal the hooked fish and challenge using client-measured reaction seconds.
 - `game.finishCast`: resolve the tap challenge and save the result.
+- `game.expireCast`: clear the active cast after a client-owned timeout.
 - `game.selectLocation`: switch unlocked locations and clear active cast state.
 - `game.selectBait`: switch the active bait and clear active cast state.
 
@@ -63,7 +64,8 @@ The first playable screen mirrors the Android RiverKing fishing surface at a sma
 - the original `Pond` fish pool and weights, including rare koi entries
 - a top location button and a compact bait picker for `Fresh Peaceful`, `Fresh Predator`, `Sea Peaceful`, `Sea Predator`
 - event-style bait weighting, so bait water type biases the pool but does not hard-filter it
-- hidden landing tap goals with timeout-based escapes
+- client-owned bite, hook, landing, and post-cycle cooldown timers so network latency does not shorten the visible interaction windows
+- hidden landing tap goals with timeout-based local escapes
 - bottom tab placeholders for fishing, ratings, catalog, and shop
 
 ## Design Rules

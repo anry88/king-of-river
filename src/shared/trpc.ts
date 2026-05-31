@@ -5,8 +5,9 @@ import type { GameSnapshot } from './game/types';
 type GameActions = {
   init: () => Promise<GameSnapshot>;
   startCast: () => Promise<GameSnapshot>;
-  hook: () => Promise<GameSnapshot>;
+  hook: (reactionSeconds: number) => Promise<GameSnapshot>;
   finishCast: (taps: number) => Promise<GameSnapshot>;
+  expireCast: (castId: string) => Promise<GameSnapshot>;
   selectLocation: (locationId: string) => Promise<GameSnapshot>;
   selectBait: (baitId: string) => Promise<GameSnapshot>;
 };
@@ -40,9 +41,15 @@ export const appRouter = t.router({
     startCast: publicProcedure.mutation(({ ctx }) => {
       return ctx.gameService.startCast();
     }),
-    hook: publicProcedure.mutation(({ ctx }) => {
-      return ctx.gameService.hook();
-    }),
+    hook: publicProcedure
+      .input(
+        z.object({
+          reactionSeconds: z.number().min(0).max(30),
+        })
+      )
+      .mutation(({ ctx, input }) => {
+        return ctx.gameService.hook(input.reactionSeconds);
+      }),
     finishCast: publicProcedure
       .input(
         z.object({
@@ -51,6 +58,15 @@ export const appRouter = t.router({
       )
       .mutation(({ ctx, input }) => {
         return ctx.gameService.finishCast(input.taps);
+      }),
+    expireCast: publicProcedure
+      .input(
+        z.object({
+          castId: z.string().min(1),
+        })
+      )
+      .mutation(({ ctx, input }) => {
+        return ctx.gameService.expireCast(input.castId);
       }),
     selectLocation: publicProcedure
       .input(

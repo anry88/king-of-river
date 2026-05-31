@@ -9,7 +9,7 @@ The client package owns code that runs inside the Reddit iframe.
 
 ## Supporting files
 
-- `hooks/useGame.ts`: wraps tRPC calls, local action state, hidden pull taps, and hook/landing timeout handling.
+- `hooks/useGame.ts`: wraps tRPC calls, local action state, client-owned bite/hook/landing timers, hidden pull taps, and timeout handling.
 - `trpcClient.ts`: creates the browser tRPC client.
 - `index.css`: Tailwind import plus shared game UI component classes.
 
@@ -17,4 +17,4 @@ The client package owns code that runs inside the Reddit iframe.
 
 - Use `requestExpandedMode` to open the game from the inline card.
 - Use `navigateTo` from `@devvit/web/client` for external navigation if navigation is added.
-- Keep saveable game state on the server; client state should only cover active UI input and loading states.
+- Keep saveable game state on the server; client state should only cover active UI input, loading states, and latency-sensitive interaction clocks.
