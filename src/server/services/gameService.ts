@@ -87,7 +87,10 @@ export const createGameService = (
       dailyRewardStatus: createDailyRewardStatus(profile, now),
       ratings: await ratingRepository.loadRatings(
         identity,
-        defaultRatingFilters,
+        {
+          ...defaultRatingFilters,
+          locationId: profile.currentLocationId,
+        },
         now
       ),
       message,

@@ -736,6 +736,48 @@
     color: #fff1b8;
   }
 
+  .rarity-text {
+    color: var(--rarity-color, #d9f1e7);
+    text-shadow: 0 0 10px var(--rarity-glow, transparent);
+  }
+
+  .rarity-tone-common {
+    --rarity-color: #d4d0be;
+    --rarity-glow: rgb(212 208 190 / 0.16);
+  }
+
+  .rarity-tone-uncommon {
+    --rarity-color: #62de8d;
+    --rarity-glow: rgb(98 222 141 / 0.2);
+  }
+
+  .rarity-tone-rare {
+    --rarity-color: #68d4ff;
+    --rarity-glow: rgb(104 212 255 / 0.22);
+  }
+
+  .rarity-tone-epic {
+    --rarity-color: #be89ff;
+    --rarity-glow: rgb(190 137 255 / 0.22);
+  }
+
+  .rarity-tone-mythic {
+    --rarity-color: #ff8470;
+    --rarity-glow: rgb(255 132 112 / 0.22);
+  }
+
+  .rarity-tone-legendary {
+    --rarity-color: #ffd76a;
+    --rarity-glow: rgb(255 215 106 / 0.26);
+  }
+
+  .rating-entry-meta span.rarity-text,
+  .catalog-rarity-button span.rarity-text,
+  .catalog-rarity-option span.rarity-text,
+  .catalog-fish-copy .rarity-text {
+    color: var(--rarity-color, #d9f1e7);
+  }
+
   .rating-rarity-common {
     border-color: rgb(185 217 200 / 0.2);
   }

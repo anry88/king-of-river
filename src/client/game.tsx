@@ -257,6 +257,16 @@ const rarityLabels: Record<RarityFilter, string> = {
   mythic: 'Mythic',
   legendary: 'Legendary',
 };
+const rarityToneClasses: Record<Rarity, string> = {
+  common: 'rarity-tone-common',
+  uncommon: 'rarity-tone-uncommon',
+  rare: 'rarity-tone-rare',
+  epic: 'rarity-tone-epic',
+  mythic: 'rarity-tone-mythic',
+  legendary: 'rarity-tone-legendary',
+};
+const getRarityTextClassName = (rarity: Rarity): string =>
+  `rarity-text ${rarityToneClasses[rarity]}`;
 
 const ratingPeriodOptions: Array<{ id: RatingPeriod; label: string }> = [
   { id: 'today', label: 'Today' },
@@ -265,7 +275,7 @@ const ratingPeriodOptions: Array<{ id: RatingPeriod; label: string }> = [
 ];
 
 const ratingOrderOptions: Array<{ id: RatingOrder; label: string }> = [
-  { id: 'desc', label: 'Best' },
+  { id: 'desc', label: 'Largest' },
   { id: 'asc', label: 'Smallest' },
 ];
 
@@ -1662,7 +1672,9 @@ const RatingEntryCard = ({
             .join(' · ')}
         </p>
         <div className="rating-entry-meta">
-          <span>{rarityLabels[entry.rarity]}</span>
+          <span className={getRarityTextClassName(entry.rarity)}>
+            {rarityLabels[entry.rarity]}
+          </span>
           {entry.prizeCoins ? (
             <span>{`+${entry.prizeCoins} coins`}</span>
           ) : null}
@@ -1774,7 +1786,15 @@ const CatalogStage = ({ locations, fish, profile }: CatalogStageProps) => {
                   onClick={() => setRarityMenuOpen((open) => !open)}
                   type="button"
                 >
-                  <span>{rarityLabels[rarityFilter]}</span>
+                  <span
+                    className={
+                      rarityFilter === 'all'
+                        ? undefined
+                        : getRarityTextClassName(rarityFilter)
+                    }
+                  >
+                    {rarityLabels[rarityFilter]}
+                  </span>
                   <span className="catalog-rarity-caret" aria-hidden="true">
                     ▾
                   </span>
@@ -1809,7 +1829,15 @@ const CatalogStage = ({ locations, fish, profile }: CatalogStageProps) => {
                           >
                             {selected ? '✓' : ''}
                           </span>
-                          <span>{rarityLabels[option]}</span>
+                          <span
+                            className={
+                              option === 'all'
+                                ? undefined
+                                : getRarityTextClassName(option)
+                            }
+                          >
+                            {rarityLabels[option]}
+                          </span>
                         </button>
                       );
                     })}
@@ -1933,9 +1961,16 @@ const CatalogFishCard = ({
           </span>
         </div>
         <p>
-          {discovered
-            ? `${rarityLabels[fish.rarity]} · ${getWaterShortLabel(fish.water)}`
-            : 'Catch it to reveal'}
+          {discovered ? (
+            <>
+              <span className={getRarityTextClassName(fish.rarity)}>
+                {rarityLabels[fish.rarity]}
+              </span>
+              <span>{` · ${getWaterShortLabel(fish.water)}`}</span>
+            </>
+          ) : (
+            'Catch it to reveal'
+          )}
         </p>
         {discovered ? (
           <div className="catalog-chip-row">
