@@ -58,7 +58,7 @@ flowchart LR
 1. Open the inline post card.
 2. Expand into the game.
 3. Choose the current location and bait from the top controls.
-4. Cast a line at the current location.
+4. Cast a line with an in-stock bait that matches the current location water.
 5. Hook a fish before the hook window expires.
 6. Pull with a hidden tap goal before the fish escapes.
 7. Buy RiverKing bait packs in the shop with coins.

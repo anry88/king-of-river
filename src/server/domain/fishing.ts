@@ -20,6 +20,7 @@ import type {
   HookedFish,
   LocationDefinition,
   Rarity,
+  WaterType,
 } from '../../shared/game/types';
 
 const maxRecentCatches = 12;
@@ -60,13 +61,18 @@ export class GameRuleError extends Error {
   }
 }
 
+const initialBaitInventory: BaitInventoryItem[] = [
+  { baitId: 'fresh-peaceful', quantity: 10 },
+  { baitId: 'fresh-predator', quantity: 5 },
+];
+
 export const createInitialProfile = (
   postId: string,
   username: string,
   now: number
 ): GameProfile => {
   return {
-    version: 3,
+    version: 4,
     postId,
     username,
     coins: 40,
@@ -75,7 +81,7 @@ export const createInitialProfile = (
     currentLocationId: defaultLocationId,
     currentBaitId: defaultBaitId,
     currentRodId: defaultRodId,
-    baitInventory: [],
+    baitInventory: initialBaitInventory.map((item) => ({ ...item })),
     discoveredFishIds: [],
     catches: [],
     activeCast: null,
@@ -120,12 +126,19 @@ export const startCast = (profile: GameProfile, now: number): GameProfile => {
 
   const location = requireUnlockedLocation(profile, profile.currentLocationId);
   const bait = requireBait(profile.currentBaitId);
+  if (bait.water !== location.water) {
+    throw new GameRuleError('This bait does not work at this location.');
+  }
+
+  const baitInventory = consumeBait(profile.baitInventory, bait.id);
   const waitSeconds = nextBiteWaitSeconds();
   const hookReadyAt = now + waitSeconds * 1000;
   const castSpot = nextCastSpot();
 
   return {
     ...profile,
+    baitInventory,
+    currentBaitId: nextCurrentBaitId(baitInventory, location.water, bait.id),
     activeCast: {
       id: randomUUID(),
       locationId: location.id,
@@ -317,6 +330,33 @@ const mergeBaitInventory = (
   }));
 };
 
+const consumeBait = (inventory: BaitInventoryItem[], baitId: string): BaitInventoryItem[] => {
+  const current = inventory.find((item) => item.baitId === baitId)?.quantity ?? 0;
+  if (current <= 0) {
+    throw new GameRuleError('No bait left.');
+  }
+
+  return inventory.map((item) =>
+    item.baitId === baitId ? { ...item, quantity: item.quantity - 1 } : item
+  );
+};
+
+const nextCurrentBaitId = (
+  inventory: BaitInventoryItem[],
+  water: WaterType,
+  currentBaitId: string
+): string => {
+  const currentQuantity = inventory.find((item) => item.baitId === currentBaitId)?.quantity ?? 0;
+  if (currentQuantity > 0) return currentBaitId;
+
+  const nextInventoryItem = inventory.find((item) => {
+    if (item.quantity <= 0) return false;
+    return findBait(item.baitId)?.water === water;
+  });
+
+  return nextInventoryItem?.baitId ?? currentBaitId;
+};
+
 const requireUnlockedLocation = (
   profile: GameProfile,
   locationId: string
@@ -363,13 +403,13 @@ const pickFish = (
     .map((entry) => {
       const fish = findFish(entry.fishId);
       if (!fish) return null;
+      if (fish.water !== location.water) return null;
 
       const predatorFactor = fish.isPredator === bait.isPredator ? 1 : 0.18;
-      const waterFactor = fish.water === bait.water ? 1 : 0.65;
 
       return {
         fish,
-        weight: entry.weight * predatorFactor * waterFactor * rarityModifier(fish.rarity, rarityFactor),
+        weight: entry.weight * predatorFactor * rarityModifier(fish.rarity, rarityFactor),
       };
     })
     .filter(isWeightedFish);

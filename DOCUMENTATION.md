@@ -41,7 +41,7 @@ king-of-river:post:{postId}:player:{username}
 The saved profile contains:
 
 - player coins, XP, level, selected location, selected bait, and selected rod
-- stored bait inventory added through shop purchases
+- consumable bait inventory seeded with starter freshwater bait and expanded through shop purchases
 - discovered fish IDs
 - recent catch records
 - active cast state
@@ -65,7 +65,8 @@ The first playable screen mirrors the Android RiverKing fishing surface at a sma
 - one regular location, `Pond`, using the original Android background asset
 - the original `Pond` fish pool and weights, including rare koi entries
 - a top location button and a compact bait picker for `Fresh Peaceful`, `Fresh Predator`, `Sea Peaceful`, `Sea Predator`
-- event-style bait weighting, so bait water type biases the pool but does not hard-filter it
+- location water type hard-gates usable bait, so saltwater bait cannot be cast in the freshwater `Pond`
+- predator bait type biases fish selection, but it does not remove fish from the pool
 - client-owned bite, hook, landing, and post-cycle cooldown timers so network latency does not shorten the visible interaction windows
 - hidden landing tap goals with timeout-based local escapes
 - active Fishing and Shop tabs; Ratings and Catalog remain placeholders

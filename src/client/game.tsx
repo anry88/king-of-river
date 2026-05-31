@@ -82,6 +82,8 @@ type ActionControlsProps = {
   activeCast: ActiveCast | null;
   actionPending: boolean;
   castCooldownActive: boolean;
+  canStartCast: boolean;
+  startBlockedLabel: string;
   tapCount: number;
   now: number;
   onStartCast: () => void;
@@ -813,6 +815,9 @@ const SetupBar = ({
   onSelectBait,
 }: SetupBarProps) => {
   const [baitPickerOpen, setBaitPickerOpen] = useState(false);
+  const selectedBaitQuantity = selectedBait
+    ? getBaitInventoryQuantity(profile, selectedBait.id)
+    : 0;
 
   const handleSelectBait = (baitId: string) => {
     setBaitPickerOpen(false);
@@ -841,7 +846,9 @@ const SetupBar = ({
           {selectedBait ? <img src={selectedBait.image} alt="" /> : null}
           <span>
             <span className="setup-label">Bait</span>
-            <strong>{selectedBait?.name ?? 'Choose'}</strong>
+            <strong>
+              {selectedBait ? `${selectedBait.name} · ${selectedBaitQuantity}` : 'Choose'}
+            </strong>
           </span>
           <span className="setup-caret" aria-hidden="true">
             ▾
@@ -852,16 +859,25 @@ const SetupBar = ({
           <div className="bait-picker" aria-label="Bait picker">
             {baits.map((bait) => {
               const selected = bait.id === profile.currentBaitId;
+              const quantity = getBaitInventoryQuantity(profile, bait.id);
+              const wrongWater = selectedLocation ? bait.water !== selectedLocation.water : false;
+              const unavailable = quantity <= 0 || wrongWater;
 
               return (
                 <button
-                  className={`bait-option ${selected ? 'bait-option-selected' : ''}`}
+                  className={`bait-option ${selected ? 'bait-option-selected' : ''} ${
+                    unavailable ? 'bait-option-disabled' : ''
+                  }`}
+                  disabled={unavailable}
                   key={bait.id}
                   onClick={() => handleSelectBait(bait.id)}
                   type="button"
                 >
                   <img src={bait.image} alt="" />
-                  <span>{bait.name}</span>
+                  <span>
+                    <strong>{bait.name}</strong>
+                    <small>{wrongWater ? 'Wrong water' : `${quantity} left`}</small>
+                  </span>
                 </button>
               );
             })}
@@ -950,6 +966,14 @@ const FishingStage = ({
     x: Math.min(0.88, Math.max(0.05, lastCatch?.castX ?? 0.44)) * 100,
     y: Math.min(0.9, Math.max(0.42, lastCatch?.castY ?? 0.58)) * 100,
   };
+  const selectedBaitQuantity = selectedBait
+    ? getBaitInventoryQuantity(profile, selectedBait.id)
+    : 0;
+  const selectedBaitWorksHere = Boolean(
+    selectedBait && selectedLocation && selectedBait.water === selectedLocation.water
+  );
+  const canStartCast = selectedBaitQuantity > 0 && selectedBaitWorksHere;
+  const startBlockedLabel = selectedBaitWorksHere ? 'No bait' : 'Wrong water';
 
   return (
     <section className="stage-wrap">
@@ -1044,6 +1068,8 @@ const FishingStage = ({
           activeCast={activeCast}
           actionPending={actionPending}
           castCooldownActive={castCooldownActive}
+          canStartCast={canStartCast}
+          startBlockedLabel={startBlockedLabel}
           tapCount={tapCount}
           now={now}
           onStartCast={onStartCast}
@@ -1230,6 +1256,8 @@ const ActionControls = ({
   activeCast,
   actionPending,
   castCooldownActive,
+  canStartCast,
+  startBlockedLabel,
   tapCount,
   now,
   onStartCast,
@@ -1240,11 +1268,11 @@ const ActionControls = ({
     return (
       <button
         className={`cast-action ${castCooldownActive ? 'cast-action-cooldown' : ''}`}
-        disabled={actionPending || castCooldownActive}
+        disabled={actionPending || castCooldownActive || !canStartCast}
         onClick={onStartCast}
         type="button"
       >
-        {castCooldownActive ? 'Waiting' : 'Cast'}
+        {castCooldownActive ? 'Waiting' : canStartCast ? 'Cast' : startBlockedLabel}
       </button>
     );
   }

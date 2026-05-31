@@ -208,15 +208,32 @@
   }
 
   .bait-option span {
-    display: -webkit-box;
+    display: grid;
+    min-width: 0;
+    gap: 2px;
+    color: inherit;
+  }
+
+  .bait-option strong {
+    display: block;
     min-width: 0;
     overflow: hidden;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
     color: inherit;
     font-size: 0.72rem;
     font-weight: 800;
     line-height: 1.12;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bait-option small {
+    overflow: hidden;
+    color: #9fc9ba;
+    font-size: 0.64rem;
+    font-weight: 800;
+    line-height: 1.05;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .bait-option-selected {
@@ -225,7 +242,12 @@
     color: #fff1b8;
   }
 
+  .bait-option-disabled {
+    opacity: 0.5;
+  }
+
   .setup-cell:disabled,
+  .bait-option:disabled,
   .cast-action:disabled,
   .bottom-tab:disabled {
     cursor: not-allowed;

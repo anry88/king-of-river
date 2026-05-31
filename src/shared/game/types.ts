@@ -52,6 +52,7 @@ export type LocationDefinition = {
   id: string;
   name: string;
   description: string;
+  water: WaterType;
   unlockLevel: number;
   sizeMultiplier: number;
   image: string;
@@ -115,7 +116,7 @@ export type DailyRewardState = {
 };
 
 export type GameProfile = {
-  version: 3;
+  version: 4;
   postId: string;
   username: string;
   coins: number;
@@ -243,7 +244,7 @@ const isActiveCast = (value: unknown): value is ActiveCast => {
 
 export const isGameProfile = (value: unknown): value is GameProfile => {
   if (!isRecord(value)) return false;
-  if (value.version !== 3) return false;
+  if (value.version !== 4) return false;
 
   const dailyReward = value.dailyReward;
   if (!isRecord(dailyReward)) return false;

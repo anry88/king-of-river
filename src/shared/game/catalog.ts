@@ -479,6 +479,7 @@ export const locationCatalog: LocationDefinition[] = [
     id: 'pond',
     name: 'Pond',
     description: 'The starter RiverKing location with freshwater fish and rare koi.',
+    water: 'fresh',
     unlockLevel: 1,
     sizeMultiplier: 1,
     image: '/riverking/backgrounds/pond.webp',
