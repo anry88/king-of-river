@@ -13,10 +13,15 @@ import type {
   FishDefinition,
   GameProfile,
   LocationDefinition,
+  Rarity,
   WaterType,
 } from '../shared/game/types';
 
 type BottomTabId = 'fishing' | 'ratings' | 'catalog' | 'shop';
+
+type CatalogSectionId = 'locations' | 'fish';
+
+type RarityFilter = Rarity | 'all';
 
 type BottomTabDefinition = {
   id: BottomTabId;
@@ -64,6 +69,12 @@ type ShopStageProps = {
   errorMessage: string | null;
   onBuyBaitPack: (baitPackId: string) => void;
   onClaimDailyReward: () => void;
+};
+
+type CatalogStageProps = {
+  locations: LocationDefinition[];
+  fish: FishDefinition[];
+  profile: GameProfile;
 };
 
 type ShopGroupProps = {
@@ -189,7 +200,7 @@ const bottomTabs: BottomTabDefinition[] = [
     id: 'catalog',
     label: 'Catalog',
     icon: '/riverking/menu/guide.webp',
-    disabled: true,
+    disabled: false,
   },
   {
     id: 'shop',
@@ -207,6 +218,25 @@ const assetPreloadImages = [
   '/riverking/baits/squid_rings.webp',
   '/riverking/inline_commands/daily.png',
 ];
+
+const rarityOrder: Rarity[] = [
+  'common',
+  'uncommon',
+  'rare',
+  'epic',
+  'mythic',
+  'legendary',
+];
+const rarityFilterOptions: RarityFilter[] = ['all', ...rarityOrder];
+const rarityLabels: Record<RarityFilter, string> = {
+  all: 'All rarities',
+  common: 'Common',
+  uncommon: 'Uncommon',
+  rare: 'Rare',
+  epic: 'Epic',
+  mythic: 'Mythic',
+  legendary: 'Legendary',
+};
 
 const bobberSize = 30;
 const bobberRadius = bobberSize / 2;
@@ -873,6 +903,12 @@ export const App = () => {
             onBuyBaitPack={buyBaitPack}
             onClaimDailyReward={claimDailyReward}
           />
+        ) : activeTab === 'catalog' ? (
+          <CatalogStage
+            locations={catalog.locations}
+            fish={catalog.fish}
+            profile={profile}
+          />
         ) : (
           <FishingStage
             activeCast={activeCast}
@@ -1308,6 +1344,231 @@ const CatchFlight = ({
   );
 };
 
+const CatalogStage = ({ locations, fish, profile }: CatalogStageProps) => {
+  const [section, setSection] = useState<CatalogSectionId>('locations');
+  const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
+  const [discoveredOnly, setDiscoveredOnly] = useState(false);
+  const discoveredFishIds = useMemo(
+    () => new Set(profile.discoveredFishIds),
+    [profile.discoveredFishIds]
+  );
+  const discoveredCount = fish.filter((entry) =>
+    discoveredFishIds.has(entry.id)
+  ).length;
+  const locationNamesByFishId = useMemo(
+    () => buildLocationNamesByFishId(locations),
+    [locations]
+  );
+  const visibleFish = useMemo(() => {
+    return fish
+      .filter(
+        (entry) => rarityFilter === 'all' || entry.rarity === rarityFilter
+      )
+      .filter((entry) => !discoveredOnly || discoveredFishIds.has(entry.id))
+      .sort(compareFishForCatalog);
+  }, [discoveredFishIds, discoveredOnly, fish, rarityFilter]);
+
+  return (
+    <section className="stage-wrap catalog-stage-wrap">
+      <div className="catalog-stage">
+        <div className="catalog-header">
+          <div>
+            <span>Catalog</span>
+            <h1>{section === 'locations' ? 'Locations' : 'Fish'}</h1>
+          </div>
+          <div className="catalog-progress">
+            <span>Caught</span>
+            <strong>{formatWeight(profile.totalCaughtWeightKg)} kg</strong>
+          </div>
+        </div>
+
+        <div
+          className="catalog-tabs"
+          role="tablist"
+          aria-label="Catalog sections"
+        >
+          <button
+            className={section === 'locations' ? 'catalog-tab-active' : ''}
+            onClick={() => setSection('locations')}
+            role="tab"
+            type="button"
+          >
+            Locations
+          </button>
+          <button
+            className={section === 'fish' ? 'catalog-tab-active' : ''}
+            onClick={() => setSection('fish')}
+            role="tab"
+            type="button"
+          >
+            Fish
+          </button>
+        </div>
+
+        {section === 'locations' ? (
+          <div className="catalog-location-list">
+            {locations.map((location) => (
+              <CatalogLocationCard
+                key={location.id}
+                location={location}
+                profile={profile}
+              />
+            ))}
+          </div>
+        ) : (
+          <>
+            <div className="catalog-filters" aria-label="Fish filters">
+              <label className="catalog-filter-select">
+                <span>Rarity</span>
+                <select
+                  value={rarityFilter}
+                  onChange={(event) =>
+                    setRarityFilter(
+                      parseRarityFilter(event.currentTarget.value)
+                    )
+                  }
+                >
+                  {rarityFilterOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {rarityLabels[option]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="catalog-filter-toggle">
+                <input
+                  checked={discoveredOnly}
+                  onChange={(event) =>
+                    setDiscoveredOnly(event.currentTarget.checked)
+                  }
+                  type="checkbox"
+                />
+                <span>Discovered only</span>
+              </label>
+            </div>
+
+            <div className="catalog-count-row">
+              <span>
+                {visibleFish.length} shown · {discoveredCount}/{fish.length}{' '}
+                discovered
+              </span>
+            </div>
+
+            <div className="catalog-fish-list">
+              {visibleFish.length > 0 ? (
+                visibleFish.map((entry) => (
+                  <CatalogFishCard
+                    discovered={discoveredFishIds.has(entry.id)}
+                    fish={entry}
+                    key={entry.id}
+                    locationNames={locationNamesByFishId.get(entry.id) ?? []}
+                  />
+                ))
+              ) : (
+                <div className="catalog-empty">
+                  No fish match these filters.
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    </section>
+  );
+};
+
+const CatalogLocationCard = ({
+  location,
+  profile,
+}: {
+  location: LocationDefinition;
+  profile: GameProfile;
+}) => {
+  const unlocked = isLocationUnlocked(location, profile);
+  const progress =
+    location.unlockWeightKg <= 0
+      ? 1
+      : Math.min(1, profile.totalCaughtWeightKg / location.unlockWeightKg);
+
+  return (
+    <article
+      className={`catalog-location-card ${
+        unlocked ? 'catalog-location-unlocked' : 'catalog-location-locked'
+      }`}
+    >
+      <div
+        className="catalog-location-art"
+        style={{ backgroundImage: `url(${location.image})` }}
+      >
+        <div className="catalog-location-shade" />
+        <div className="catalog-location-copy">
+          <span>{getLocationWaterLabel(location.water)}</span>
+          <h2>{location.name}</h2>
+        </div>
+        <div className="catalog-location-state">
+          {unlocked ? 'Unlocked' : 'Locked'}
+        </div>
+      </div>
+      <div className="catalog-location-meta">
+        <span>{location.fishWeights.length} fish</span>
+        <span>
+          {unlocked
+            ? 'Available'
+            : `Unlock at ${formatWeight(location.unlockWeightKg)} kg`}
+        </span>
+      </div>
+      <div className="catalog-progress-bar" aria-hidden="true">
+        <span style={{ width: `${progress * 100}%` }} />
+      </div>
+    </article>
+  );
+};
+
+const CatalogFishCard = ({
+  discovered,
+  fish,
+  locationNames,
+}: {
+  discovered: boolean;
+  fish: FishDefinition;
+  locationNames: string[];
+}) => {
+  return (
+    <article
+      className={`catalog-fish-card catalog-rarity-${fish.rarity} ${
+        discovered ? 'catalog-fish-discovered' : 'catalog-fish-hidden'
+      }`}
+    >
+      <div className="catalog-fish-thumb">
+        {discovered ? <img src={fish.image} alt={fish.name} /> : <span>?</span>}
+      </div>
+      <div className="catalog-fish-copy">
+        <div className="catalog-fish-title-row">
+          <h2>{discovered ? fish.name : '?????'}</h2>
+          <span className="catalog-fish-state">
+            {discovered ? 'Discovered' : 'Hidden'}
+          </span>
+        </div>
+        <p>
+          {discovered
+            ? `${rarityLabels[fish.rarity]} · ${getWaterShortLabel(fish.water)}`
+            : 'Catch it to reveal'}
+        </p>
+        {discovered ? (
+          <div className="catalog-chip-row">
+            {locationNames.slice(0, 3).map((locationName) => (
+              <span key={locationName}>{locationName}</span>
+            ))}
+            {locationNames.length > 3 ? (
+              <span>{`+${locationNames.length - 3}`}</span>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    </article>
+  );
+};
+
 const ShopStage = ({
   packs,
   baits,
@@ -1498,6 +1759,22 @@ const getBaitInventoryQuantity = (
   );
 };
 
+const buildLocationNamesByFishId = (
+  locations: LocationDefinition[]
+): Map<string, string[]> => {
+  const namesByFishId = new Map<string, string[]>();
+
+  for (const location of locations) {
+    for (const entry of location.fishWeights) {
+      const names = namesByFishId.get(entry.fishId) ?? [];
+      names.push(location.name);
+      namesByFishId.set(entry.fishId, names);
+    }
+  }
+
+  return namesByFishId;
+};
+
 const isLocationUnlocked = (
   location: LocationDefinition,
   profile: GameProfile
@@ -1515,6 +1792,25 @@ const locationAcceptsBait = (
 const getLocationWaterLabel = (water: LocationDefinition['water']): string => {
   if (water === 'mixed') return 'Fresh + Salt';
   return water === 'fresh' ? 'Freshwater' : 'Saltwater';
+};
+
+const getWaterShortLabel = (water: WaterType): string => {
+  return water === 'fresh' ? 'Fresh' : 'Salt';
+};
+
+const compareFishForCatalog = (
+  left: FishDefinition,
+  right: FishDefinition
+): number => {
+  const rarityDelta =
+    rarityOrder.indexOf(left.rarity) - rarityOrder.indexOf(right.rarity);
+  if (rarityDelta !== 0) return rarityDelta;
+
+  return left.name.localeCompare(right.name, 'en', { sensitivity: 'base' });
+};
+
+const parseRarityFilter = (value: string): RarityFilter => {
+  return rarityFilterOptions.find((option) => option === value) ?? 'all';
 };
 
 const formatWeight = (weightKg: number): string => {

@@ -12,6 +12,7 @@ The first Reddit version focuses on a short-session fishing loop:
 - hook a fish
 - pull through a hidden tap challenge before the fish escapes
 - save coins, XP, total caught weight, discoveries, and recent catches
+- review unlocked locations and discovered fish in the catalog
 
 The architecture leaves explicit room for the RiverKing systems that make sense on Reddit:
 

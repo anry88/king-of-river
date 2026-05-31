@@ -72,7 +72,8 @@ The first playable screen mirrors the Android RiverKing fishing surface at a sma
 - predator bait type biases fish selection, but it does not remove fish from the pool
 - client-owned bite, hook, landing, and post-cycle cooldown timers so network latency does not shorten the visible interaction windows
 - hidden landing tap goals with timeout-based local escapes
-- active Fishing and Shop tabs; Ratings and Catalog remain placeholders
+- active Fishing, Catalog, and Shop tabs; Ratings remains a placeholder
+- Catalog shows regular locations with total-weight locks plus fish cards with rarity/discovered filters
 - six basic RiverKing bait packs split into freshwater and saltwater S/M/L groups
 - a daily reward icon beside coins that claims the RiverKing seven-day bait schedule; boost-lure slots from the original schedule are converted into extra base bait quantities
 

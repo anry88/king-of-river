@@ -29,7 +29,7 @@ Source inspiration:
 - Service orchestration in `src/server/services/gameService.ts`.
 - Redis persistence in `src/server/storage/gameRepository.ts`.
 - Shared game catalog and DTOs in `src/shared/game/`.
-- First playable screen with 14 regular RiverKing locations, 219 regular RiverKing fish, total-weight location unlocks, a compact bait picker for four base baits, original RiverKing location/fish/menu assets, daily bait rewards, and a Shop tab with six RiverKing bait packs.
+- First playable screen with 14 regular RiverKing locations, 219 regular RiverKing fish, total-weight location unlocks, a compact bait picker for four base baits, original RiverKing location/fish/menu assets, a Catalog tab for locations and discovered fish, daily bait rewards, and a Shop tab with six RiverKing bait packs.
 - Moderator menu action to create a custom King of River post.
 - Documentation map matching the original RiverKing repository style.
 
