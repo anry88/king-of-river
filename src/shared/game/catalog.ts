@@ -1,5 +1,6 @@
 import type {
   BaitDefinition,
+  BaitPackDefinition,
   FishDefinition,
   GameCatalog,
   LocationDefinition,
@@ -398,6 +399,81 @@ export const baitCatalog: BaitDefinition[] = [
   },
 ];
 
+export const baitPackCatalog: BaitPackDefinition[] = [
+  {
+    id: 'fresh_topup_s',
+    name: 'Freshwater Top-up S',
+    description: '20 freshwater basics: 10 "Grain Crumble" and 10 "Brook Minnow"',
+    water: 'fresh',
+    priceCoins: 360,
+    image: '/riverking/shop/fresh_topup_s.png',
+    items: [
+      { baitId: 'fresh-peaceful', quantity: 10 },
+      { baitId: 'fresh-predator', quantity: 10 },
+    ],
+  },
+  {
+    id: 'fresh_stock_m',
+    name: 'Freshwater Stock M',
+    description: '50 freshwater basics: 25 "Grain Crumble" and 25 "Brook Minnow"',
+    water: 'fresh',
+    priceCoins: 825,
+    image: '/riverking/shop/fresh_stock_m.png',
+    items: [
+      { baitId: 'fresh-peaceful', quantity: 25 },
+      { baitId: 'fresh-predator', quantity: 25 },
+    ],
+  },
+  {
+    id: 'fresh_crate_l',
+    name: 'Freshwater Crate L',
+    description: '120 freshwater basics: 60 "Grain Crumble" and 60 "Brook Minnow"',
+    water: 'fresh',
+    priceCoins: 1875,
+    image: '/riverking/shop/fresh_crate_l.png',
+    items: [
+      { baitId: 'fresh-peaceful', quantity: 60 },
+      { baitId: 'fresh-predator', quantity: 60 },
+    ],
+  },
+  {
+    id: 'salt_topup_s',
+    name: 'Saltwater Top-up S',
+    description: '20 saltwater basics: 6 "Seaweed Strand" and 14 "Squid Rings"',
+    water: 'salt',
+    priceCoins: 675,
+    image: '/riverking/shop/salt_topup_s.png',
+    items: [
+      { baitId: 'salt-peaceful', quantity: 6 },
+      { baitId: 'salt-predator', quantity: 14 },
+    ],
+  },
+  {
+    id: 'salt_stock_m',
+    name: 'Saltwater Stock M',
+    description: '50 saltwater basics: 15 "Seaweed Strand" and 35 "Squid Rings"',
+    water: 'salt',
+    priceCoins: 1500,
+    image: '/riverking/shop/salt_stock_m.png',
+    items: [
+      { baitId: 'salt-peaceful', quantity: 15 },
+      { baitId: 'salt-predator', quantity: 35 },
+    ],
+  },
+  {
+    id: 'salt_crate_l',
+    name: 'Saltwater Crate L',
+    description: '120 saltwater basics: 40 "Seaweed Strand" and 80 "Squid Rings"',
+    water: 'salt',
+    priceCoins: 3300,
+    image: '/riverking/shop/salt_crate_l.png',
+    items: [
+      { baitId: 'salt-peaceful', quantity: 40 },
+      { baitId: 'salt-predator', quantity: 80 },
+    ],
+  },
+];
+
 export const locationCatalog: LocationDefinition[] = [
   {
     id: 'pond',
@@ -458,6 +534,7 @@ export const rodCatalog: RodDefinition[] = [
 export const gameCatalog: GameCatalog = {
   locations: locationCatalog,
   baits: baitCatalog,
+  baitPacks: baitPackCatalog,
   rods: rodCatalog,
   fish: fishCatalog,
 };
@@ -474,6 +551,10 @@ export const findFish = (fishId: string): FishDefinition | null => {
 
 export const findBait = (baitId: string): BaitDefinition | null => {
   return baitCatalog.find((bait) => bait.id === baitId) ?? null;
+};
+
+export const findBaitPack = (baitPackId: string): BaitPackDefinition | null => {
+  return baitPackCatalog.find((pack) => pack.id === baitPackId) ?? null;
 };
 
 export const findLocation = (locationId: string): LocationDefinition | null => {

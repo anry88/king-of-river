@@ -248,6 +248,19 @@ export const useGame = () => {
     [runAction]
   );
 
+  const buyBaitPackAction = useCallback(
+    (baitPackId: string) => {
+      void runAction(
+        () =>
+          trpc.game.buyBaitPack.mutate({
+            baitPackId,
+          }),
+        false
+      );
+    },
+    [runAction]
+  );
+
   const pullAction = useCallback(() => {
     const snapshot = stateRef.current.snapshot;
     const activeCast = snapshot?.profile.activeCast;
@@ -347,6 +360,7 @@ export const useGame = () => {
     hook: hookAction,
     selectLocation: selectLocationAction,
     selectBait: selectBaitAction,
+    buyBaitPack: buyBaitPackAction,
     pull: pullAction,
   };
 };

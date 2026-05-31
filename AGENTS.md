@@ -31,7 +31,7 @@ You are writing a Devvit web application that will be executed on Reddit.com.
   - `services/`: orchestration around domain rules and persistence.
   - `storage/`: Redis repositories and serialization.
   - `routes/`: Devvit internal routes, health, catalog, menu, triggers.
-- `src/shared/`: shared types, DTOs, runtime validation, and static game catalog.
+- `src/shared/`: shared types, DTOs, runtime validation, and static game catalog, including bait packs.
   - `trpc.ts`: tRPC router contract and procedure inputs.
 - `public/riverking/`: first visual assets reused from the original RiverKing source.
 - `docs/`: product-facing notes and repository metadata.

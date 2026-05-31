@@ -4,12 +4,15 @@ import {
   defaultLocationId,
   defaultRodId,
   findBait,
+  findBaitPack,
   findFish,
   findLocation,
 } from '../../shared/game/catalog';
 import type {
   ActiveCast,
   BaitDefinition,
+  BaitInventoryItem,
+  BaitPackItem,
   CatchRecord,
   FishDefinition,
   GameProfile,
@@ -63,7 +66,7 @@ export const createInitialProfile = (
   now: number
 ): GameProfile => {
   return {
-    version: 2,
+    version: 3,
     postId,
     username,
     coins: 40,
@@ -72,6 +75,7 @@ export const createInitialProfile = (
     currentLocationId: defaultLocationId,
     currentBaitId: defaultBaitId,
     currentRodId: defaultRodId,
+    baitInventory: [],
     discoveredFishIds: [],
     catches: [],
     activeCast: null,
@@ -79,6 +83,32 @@ export const createInitialProfile = (
       lastClaimedAt: null,
       streak: 0,
     },
+    updatedAt: now,
+  };
+};
+
+export const buyBaitPack = (
+  profile: GameProfile,
+  baitPackId: string,
+  now: number
+): GameProfile => {
+  if (profile.activeCast) {
+    throw new GameRuleError('Finish the current cast first.');
+  }
+
+  const baitPack = findBaitPack(baitPackId);
+  if (!baitPack) {
+    throw new GameRuleError('Unknown bait pack.');
+  }
+
+  if (profile.coins < baitPack.priceCoins) {
+    throw new GameRuleError('Not enough coins.');
+  }
+
+  return {
+    ...profile,
+    coins: profile.coins - baitPack.priceCoins,
+    baitInventory: mergeBaitInventory(profile.baitInventory, baitPack.items),
     updatedAt: now,
   };
 };
@@ -262,6 +292,29 @@ export const selectBait = (
     activeCast: null,
     updatedAt: now,
   };
+};
+
+const mergeBaitInventory = (
+  inventory: BaitInventoryItem[],
+  items: BaitPackItem[]
+): BaitInventoryItem[] => {
+  const quantitiesByBaitId = new Map<string, number>();
+
+  for (const item of inventory) {
+    quantitiesByBaitId.set(item.baitId, item.quantity);
+  }
+
+  for (const item of items) {
+    quantitiesByBaitId.set(
+      item.baitId,
+      (quantitiesByBaitId.get(item.baitId) ?? 0) + item.quantity
+    );
+  }
+
+  return Array.from(quantitiesByBaitId.entries()).map(([baitId, quantity]) => ({
+    baitId,
+    quantity,
+  }));
 };
 
 const requireUnlockedLocation = (

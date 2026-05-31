@@ -23,6 +23,26 @@ export type BaitDefinition = {
   image: string;
 };
 
+export type BaitPackItem = {
+  baitId: string;
+  quantity: number;
+};
+
+export type BaitPackDefinition = {
+  id: string;
+  name: string;
+  description: string;
+  water: WaterType;
+  priceCoins: number;
+  image: string;
+  items: BaitPackItem[];
+};
+
+export type BaitInventoryItem = {
+  baitId: string;
+  quantity: number;
+};
+
 export type LocationFishWeight = {
   fishId: string;
   weight: number;
@@ -95,7 +115,7 @@ export type DailyRewardState = {
 };
 
 export type GameProfile = {
-  version: 2;
+  version: 3;
   postId: string;
   username: string;
   coins: number;
@@ -104,6 +124,7 @@ export type GameProfile = {
   currentLocationId: string;
   currentBaitId: string;
   currentRodId: string;
+  baitInventory: BaitInventoryItem[];
   discoveredFishIds: string[];
   catches: CatchRecord[];
   activeCast: ActiveCast | null;
@@ -114,6 +135,7 @@ export type GameProfile = {
 export type GameCatalog = {
   locations: LocationDefinition[];
   baits: BaitDefinition[];
+  baitPacks: BaitPackDefinition[];
   rods: RodDefinition[];
   fish: FishDefinition[];
 };
@@ -191,6 +213,15 @@ const isCatchRecordArray = (value: unknown): value is CatchRecord[] => {
   });
 };
 
+const isBaitInventoryArray = (value: unknown): value is BaitInventoryItem[] => {
+  if (!Array.isArray(value)) return false;
+
+  return value.every((item) => {
+    if (!isRecord(item)) return false;
+    return typeof item.baitId === 'string' && isNumber(item.quantity);
+  });
+};
+
 const isActiveCast = (value: unknown): value is ActiveCast => {
   if (!isRecord(value)) return false;
   return (
@@ -212,7 +243,7 @@ const isActiveCast = (value: unknown): value is ActiveCast => {
 
 export const isGameProfile = (value: unknown): value is GameProfile => {
   if (!isRecord(value)) return false;
-  if (value.version !== 2) return false;
+  if (value.version !== 3) return false;
 
   const dailyReward = value.dailyReward;
   if (!isRecord(dailyReward)) return false;
@@ -230,6 +261,7 @@ export const isGameProfile = (value: unknown): value is GameProfile => {
     typeof value.currentLocationId === 'string' &&
     typeof value.currentBaitId === 'string' &&
     typeof value.currentRodId === 'string' &&
+    isBaitInventoryArray(value.baitInventory) &&
     isStringArray(value.discoveredFishIds) &&
     isCatchRecordArray(value.catches) &&
     (value.activeCast === null || isActiveCast(value.activeCast)) &&

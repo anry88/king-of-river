@@ -27,7 +27,7 @@ The first game loop intentionally keeps rendering in React DOM rather than intro
 - `src/server/domain/fishing.ts`: pure game rules for cast, hook, and finish.
 - `src/server/services/gameService.ts`: loads state, calls domain rules, saves snapshots.
 - `src/server/storage/gameRepository.ts`: Redis keying and JSON serialization.
-- `src/shared/game/catalog.ts`: static fish/location/bait/rod catalog.
+- `src/shared/game/catalog.ts`: static fish/location/bait/bait-pack/rod catalog.
 - `src/shared/game/types.ts`: DTOs and runtime validation for persisted profile shape.
 
 ## Current Data Model
@@ -41,6 +41,7 @@ king-of-river:post:{postId}:player:{username}
 The saved profile contains:
 
 - player coins, XP, level, selected location, selected bait, and selected rod
+- stored bait inventory added through shop purchases
 - discovered fish IDs
 - recent catch records
 - active cast state
@@ -55,6 +56,7 @@ The saved profile contains:
 - `game.expireCast`: clear the active cast after a client-owned timeout.
 - `game.selectLocation`: switch unlocked locations and clear active cast state.
 - `game.selectBait`: switch the active bait and clear active cast state.
+- `game.buyBaitPack`: spend coins on a RiverKing bait pack and add its contents to inventory.
 
 ## Current Game Surface
 
@@ -66,7 +68,8 @@ The first playable screen mirrors the Android RiverKing fishing surface at a sma
 - event-style bait weighting, so bait water type biases the pool but does not hard-filter it
 - client-owned bite, hook, landing, and post-cycle cooldown timers so network latency does not shorten the visible interaction windows
 - hidden landing tap goals with timeout-based local escapes
-- bottom tab placeholders for fishing, ratings, catalog, and shop
+- active Fishing and Shop tabs; Ratings and Catalog remain placeholders
+- six basic RiverKing bait packs split into freshwater and saltwater S/M/L groups
 
 ## Design Rules
 

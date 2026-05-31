@@ -1,6 +1,7 @@
 import { gameCatalog } from '../../shared/game/catalog';
 import type { GameSnapshot } from '../../shared/game/types';
 import {
+  buyBaitPack,
   createInitialProfile,
   expireActiveCast,
   expireCastById,
@@ -20,6 +21,7 @@ export type GameService = {
   expireCast: (castId: string) => Promise<GameSnapshot>;
   selectLocation: (locationId: string) => Promise<GameSnapshot>;
   selectBait: (baitId: string) => Promise<GameSnapshot>;
+  buyBaitPack: (baitPackId: string) => Promise<GameSnapshot>;
 };
 
 export const createGameService = (
@@ -93,6 +95,10 @@ export const createGameService = (
     selectBait: async (baitId) => {
       const profile = await loadProfile();
       return saveSnapshot(selectBait(profile, baitId, Date.now()), '');
+    },
+    buyBaitPack: async (baitPackId) => {
+      const profile = await loadProfile();
+      return saveSnapshot(buyBaitPack(profile, baitPackId, Date.now()), 'Bait pack purchased.');
     },
   };
 };

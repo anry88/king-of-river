@@ -7,11 +7,22 @@ import { useGame } from './hooks/useGame';
 import type {
   ActiveCast,
   BaitDefinition,
+  BaitPackDefinition,
   CatchRecord,
   FishDefinition,
   GameProfile,
   LocationDefinition,
+  WaterType,
 } from '../shared/game/types';
+
+type BottomTabId = 'fishing' | 'ratings' | 'catalog' | 'shop';
+
+type BottomTabDefinition = {
+  id: BottomTabId;
+  label: string;
+  icon: string;
+  disabled: boolean;
+};
 
 type SetupBarProps = {
   baits: BaitDefinition[];
@@ -37,6 +48,34 @@ type FishingStageProps = {
   onStartCast: () => void;
   onHook: () => void;
   onPull: () => void;
+};
+
+type ShopStageProps = {
+  packs: BaitPackDefinition[];
+  baits: BaitDefinition[];
+  profile: GameProfile;
+  actionPending: boolean;
+  message: string;
+  errorMessage: string | null;
+  onBuyBaitPack: (baitPackId: string) => void;
+};
+
+type ShopGroupProps = {
+  title: string;
+  water: WaterType;
+  packs: BaitPackDefinition[];
+  baits: BaitDefinition[];
+  profile: GameProfile;
+  actionPending: boolean;
+  onBuyBaitPack: (baitPackId: string) => void;
+};
+
+type ShopPackCardProps = {
+  pack: BaitPackDefinition;
+  baits: BaitDefinition[];
+  profile: GameProfile;
+  actionPending: boolean;
+  onBuyBaitPack: (baitPackId: string) => void;
 };
 
 type ActionControlsProps = {
@@ -119,11 +158,11 @@ type RigMotion = {
   isCastInWater: boolean;
 };
 
-const bottomTabs = [
-  { id: 'fishing', label: 'Fishing', icon: '/riverking/menu/fishing.webp', active: true },
-  { id: 'ratings', label: 'Ratings', icon: '/riverking/menu/ratings.webp', active: false },
-  { id: 'catalog', label: 'Catalog', icon: '/riverking/menu/guide.webp', active: false },
-  { id: 'shop', label: 'Shop', icon: '/riverking/menu/shop.webp', active: false },
+const bottomTabs: BottomTabDefinition[] = [
+  { id: 'fishing', label: 'Fishing', icon: '/riverking/menu/fishing.webp', disabled: false },
+  { id: 'ratings', label: 'Ratings', icon: '/riverking/menu/ratings.webp', disabled: true },
+  { id: 'catalog', label: 'Catalog', icon: '/riverking/menu/guide.webp', disabled: true },
+  { id: 'shop', label: 'Shop', icon: '/riverking/menu/shop.webp', disabled: false },
 ];
 
 const assetPreloadImages = [
@@ -657,7 +696,9 @@ export const App = () => {
     pull,
     selectLocation,
     selectBait,
+    buyBaitPack,
   } = useGame();
+  const [activeTab, setActiveTab] = useState<BottomTabId>('fishing');
 
   if (loadState === 'loading') {
     return <LoadingState text="Loading Pond" />;
@@ -684,34 +725,55 @@ export const App = () => {
   return (
     <main className="rk-shell">
       <section className="rk-screen">
-        <AssetPreloads images={catalog.fish.map((fish) => fish.image)} />
+        <AssetPreloads
+          images={[
+            ...catalog.fish.map((fish) => fish.image),
+            ...catalog.baitPacks.map((pack) => pack.image),
+          ]}
+        />
         <SetupBar
           baits={catalog.baits}
           profile={profile}
           selectedBait={selectedBait}
           selectedLocation={selectedLocation}
-          disabled={Boolean(activeCast) || actionPending}
+          disabled={activeTab !== 'fishing' || Boolean(activeCast) || actionPending}
           onSelectLocation={selectLocation}
           onSelectBait={selectBait}
         />
 
-        <FishingStage
-          activeCast={activeCast}
-          actionPending={actionPending}
-          tapCount={tapCount}
-          selectedBait={selectedBait}
-          caughtFish={caughtFish}
-          lastCatch={lastCatch}
-          selectedLocation={selectedLocation}
-          profile={profile}
-          message={message}
-          errorMessage={errorMessage}
-          onStartCast={startCast}
-          onHook={hook}
-          onPull={pull}
-        />
+        {activeTab === 'shop' ? (
+          <ShopStage
+            packs={catalog.baitPacks}
+            baits={catalog.baits}
+            profile={profile}
+            actionPending={actionPending}
+            message={message}
+            errorMessage={errorMessage}
+            onBuyBaitPack={buyBaitPack}
+          />
+        ) : (
+          <FishingStage
+            activeCast={activeCast}
+            actionPending={actionPending}
+            tapCount={tapCount}
+            selectedBait={selectedBait}
+            caughtFish={caughtFish}
+            lastCatch={lastCatch}
+            selectedLocation={selectedLocation}
+            profile={profile}
+            message={message}
+            errorMessage={errorMessage}
+            onStartCast={startCast}
+            onHook={hook}
+            onPull={pull}
+          />
+        )}
 
-        <BottomTabs />
+        <BottomTabs
+          activeTab={activeTab}
+          locked={Boolean(activeCast) || actionPending}
+          onSelectTab={setActiveTab}
+        />
       </section>
     </main>
   );
@@ -1013,6 +1075,157 @@ const CatchFlight = ({
   );
 };
 
+const ShopStage = ({
+  packs,
+  baits,
+  profile,
+  actionPending,
+  message,
+  errorMessage,
+  onBuyBaitPack,
+}: ShopStageProps) => {
+  const outcomeMessage = errorMessage ?? (message === 'Bait pack purchased.' ? message : '');
+
+  return (
+    <section className="stage-wrap shop-stage-wrap">
+      <div className="shop-stage">
+        <div className="shop-header">
+          <div>
+            <span>Shop</span>
+            <h1>Bait Packs</h1>
+          </div>
+          <StatPill label="Coins" value={profile.coins.toLocaleString()} />
+        </div>
+
+        {outcomeMessage ? <div className="shop-message">{outcomeMessage}</div> : null}
+
+        <BaitBalance baits={baits} profile={profile} />
+
+        <div className="shop-groups">
+          <ShopGroup
+            title="Freshwater"
+            water="fresh"
+            packs={packs}
+            baits={baits}
+            profile={profile}
+            actionPending={actionPending}
+            onBuyBaitPack={onBuyBaitPack}
+          />
+          <ShopGroup
+            title="Saltwater"
+            water="salt"
+            packs={packs}
+            baits={baits}
+            profile={profile}
+            actionPending={actionPending}
+            onBuyBaitPack={onBuyBaitPack}
+          />
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const BaitBalance = ({ baits, profile }: { baits: BaitDefinition[]; profile: GameProfile }) => {
+  return (
+    <section className="bait-balance" aria-label="Bait balance">
+      <h2>Bait Balance</h2>
+      <div className="bait-balance-grid">
+        {baits.map((bait) => (
+          <div className="bait-balance-item" key={bait.id}>
+            <img src={bait.image} alt="" />
+            <span>{bait.displayName}</span>
+            <strong>{getBaitInventoryQuantity(profile, bait.id)}</strong>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+const ShopGroup = ({
+  title,
+  water,
+  packs,
+  baits,
+  profile,
+  actionPending,
+  onBuyBaitPack,
+}: ShopGroupProps) => {
+  const visiblePacks = packs.filter((pack) => pack.water === water);
+
+  return (
+    <section className="shop-group">
+      <h2>{title}</h2>
+      <div className="shop-pack-grid">
+        {visiblePacks.map((pack) => (
+          <ShopPackCard
+            key={pack.id}
+            pack={pack}
+            baits={baits}
+            profile={profile}
+            actionPending={actionPending}
+            onBuyBaitPack={onBuyBaitPack}
+          />
+        ))}
+      </div>
+    </section>
+  );
+};
+
+const ShopPackCard = ({
+  pack,
+  baits,
+  profile,
+  actionPending,
+  onBuyBaitPack,
+}: ShopPackCardProps) => {
+  const canAfford = profile.coins >= pack.priceCoins;
+  const buyDisabled = actionPending || Boolean(profile.activeCast) || !canAfford;
+
+  return (
+    <article className="shop-pack">
+      <div className="shop-pack-main">
+        <img className="shop-pack-icon" src={pack.image} alt="" />
+        <div className="shop-pack-copy">
+          <h3>{pack.name}</h3>
+          <p>{pack.description}</p>
+        </div>
+      </div>
+
+      <ul className="shop-pack-items">
+        {pack.items.map((item) => {
+          const bait = getBaitById(baits, item.baitId);
+
+          return (
+            <li key={item.baitId}>
+              {bait ? <img src={bait.image} alt="" /> : null}
+              <span>
+                <strong>{bait?.displayName ?? item.baitId}</strong>
+                <small>{item.quantity} in pack</small>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="shop-pack-footer">
+        <button disabled={buyDisabled} onClick={() => onBuyBaitPack(pack.id)} type="button">
+          {`${pack.priceCoins.toLocaleString()} coins`}
+        </button>
+      </div>
+    </article>
+  );
+};
+
+const getBaitById = (baits: BaitDefinition[], baitId: string): BaitDefinition | null => {
+  return baits.find((bait) => bait.id === baitId) ?? null;
+};
+
+const getBaitInventoryQuantity = (profile: GameProfile, baitId: string): number => {
+  return profile.baitInventory.find((item) => item.baitId === baitId)?.quantity ?? 0;
+};
+
 const ActionControls = ({
   activeCast,
   actionPending,
@@ -1073,20 +1286,33 @@ const StatPill = ({ label, value }: StatPillProps) => {
   );
 };
 
-const BottomTabs = () => {
+const BottomTabs = ({
+  activeTab,
+  locked,
+  onSelectTab,
+}: {
+  activeTab: BottomTabId;
+  locked: boolean;
+  onSelectTab: (tabId: BottomTabId) => void;
+}) => {
   return (
     <nav className="bottom-tabs" aria-label="Sections">
-      {bottomTabs.map((tab) => (
-        <button
-          className={`bottom-tab ${tab.active ? 'bottom-tab-active' : ''}`}
-          disabled={!tab.active}
-          key={tab.id}
-          type="button"
-        >
-          <img src={tab.icon} alt="" />
-          <span>{tab.label}</span>
-        </button>
-      ))}
+      {bottomTabs.map((tab) => {
+        const active = tab.id === activeTab;
+
+        return (
+          <button
+            className={`bottom-tab ${active ? 'bottom-tab-active' : ''}`}
+            disabled={tab.disabled || (locked && !active)}
+            key={tab.id}
+            onClick={() => onSelectTab(tab.id)}
+            type="button"
+          >
+            <img src={tab.icon} alt="" />
+            <span>{tab.label}</span>
+          </button>
+        );
+      })}
     </nav>
   );
 };
